@@ -1,0 +1,23 @@
+/* Ch 13 — Doing the Right Thing */
+Quest.defineLevels("ch13", [
+  { id: "13.1", title: "Predictive Analytics, Bias & Accountability", file: null,
+    skill: "Spot how automated decisions encode bias and lack accountability, and propose safeguards.",
+    game: "Model audit: review a loan-approval system and find where feedback loops and bias enter.",
+    read: "Ch 13 — predictive analytics; bias and discrimination; responsibility and accountability; feedback loops." },
+  { id: "13.2", title: "Privacy & Tracking", file: null,
+    skill: "Apply data minimisation, consent and retention principles to a product design.",
+    game: "Privacy review: redesign a feature's tracking so it still works with far less personal data.",
+    read: "Ch 13 — privacy and tracking; surveillance; consent and freedom of choice; data as assets and power." },
+  { id: "13.3", title: "Data Protection Law in Practice", file: null,
+    skill: "Design for legal requirements like the right to erasure across logs, backups and derived data.",
+    game: "Erasure quest: delete one user from every system of record and derived store, including immutable logs.",
+    read: "Ch 13 — legislation and self-regulation." },
+  { id: "13.quest", type: "quest", title: "Side quest: Delete a user, for real", file: null,
+    skill: "Apply Ch 13 at work.",
+    game: "Trace where one user's data lives at your company (DBs, logs, backups, analytics). Could you delete it all?",
+    read: "" },
+  { id: "13.boss", type: "boss", title: "Boss: The Ethics Review", file: null,
+    skill: "Interview: lead a design review for a personalised-pricing feature and argue the trade-offs openly.",
+    game: "Stakeholder rounds: product, legal, data science and users each push back.",
+    read: "" },
+]);

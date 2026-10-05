@@ -1,0 +1,36 @@
+/* The world map: one region per chapter of DDIA 2nd edition (Kleppmann & Riccomini, O'Reilly 2026).
+ * `after` lists regions whose boss must be beaten first (Free Roam on the map ignores this).
+ * `ed1` maps the region to the 1st edition (2017) for readers with the older book.
+ * Levels for each region live in assets/levels/<id>.js. */
+Quest.defineRegions([
+  { id: "ch00", n: 0, icon: "⛺", name: "Base Camp", book: "Before you start", after: [], ed1: "—",
+    blurb: "Learn how the game works and take a placement run so the next lesson is pitched at the right level." },
+  { id: "ch01", n: 1, icon: "🧭", name: "The Crossroads", book: "Trade-offs in Data Systems Architecture", after: ["ch00"], ed1: "new in 2e (parts of Ch 1 & 3)",
+    blurb: "Operational vs analytical systems, systems of record vs derived data, cloud vs self-hosting, distributed vs single-node." },
+  { id: "ch02", n: 2, icon: "🗼", name: "Latency Lighthouse", book: "Defining Nonfunctional Requirements", after: ["ch01"], ed1: "Ch 1 Reliable, Scalable, Maintainable",
+    blurb: "Describe load and performance with percentiles, then reason about reliability, scalability and maintainability." },
+  { id: "ch03", n: 3, icon: "🏛️", name: "Model Market", book: "Data Models and Query Languages", after: ["ch02"], ed1: "Ch 2 Data Models and Query Languages",
+    blurb: "Relational, document and graph models; normalization; analytics schemas; declarative queries; event sourcing." },
+  { id: "ch04", n: 4, icon: "⛏️", name: "Storage Caves", book: "Storage and Retrieval", after: ["ch02"], ed1: "Ch 3 Storage and Retrieval",
+    blurb: "Logs, hash indexes, SSTables and LSM-trees, B-trees, secondary and vector indexes, column storage." },
+  { id: "ch05", n: 5, icon: "⚒️", name: "Schema Forge", book: "Encoding and Evolution", after: ["ch02"], ed1: "Ch 4 Encoding and Evolution",
+    blurb: "Encoding formats, Protocol Buffers and Avro, backward and forward compatibility, and how data flows between processes." },
+  { id: "ch06", n: 6, icon: "🏝️", name: "Replica Isles", book: "Replication", after: ["ch03", "ch04", "ch05"], ed1: "Ch 5 Replication",
+    blurb: "Single-leader, multi-leader and leaderless replication, the anomalies replication lag causes, and quorums." },
+  { id: "ch07", n: 7, icon: "🏔️", name: "Shard Peaks", book: "Sharding", after: ["ch06"], ed1: "Ch 6 Partitioning",
+    blurb: "Splitting data across nodes by key range or hash, hot spots, rebalancing, request routing and secondary indexes." },
+  { id: "ch08", n: 8, icon: "🏰", name: "Transaction Keep", book: "Transactions", after: ["ch06"], ed1: "Ch 7 Transactions",
+    blurb: "ACID, weak isolation levels and the anomalies they allow, serializability, and distributed transactions." },
+  { id: "ch09", n: 9, icon: "🌫️", name: "The Fog", book: "The Trouble with Distributed Systems", after: ["ch07", "ch08"], ed1: "Ch 8 The Trouble with Distributed Systems",
+    blurb: "Partial failures, unreliable networks and clocks, process pauses, fencing tokens, and system models." },
+  { id: "ch10", n: 10, icon: "⛰️", name: "Consensus Summit", book: "Consistency and Consensus", after: ["ch09"], ed1: "Ch 9 Consistency and Consensus",
+    blurb: "Linearizability, CAP, logical clocks and ordering, consensus algorithms and coordination services." },
+  { id: "ch11", n: 11, icon: "🏭", name: "Batch Factory", book: "Batch Processing", after: ["ch10"], ed1: "Ch 10 Batch Processing",
+    blurb: "Unix-style batch, distributed filesystems and object stores, dataflow engines, batch joins, and serving derived data." },
+  { id: "ch12", n: 12, icon: "🌊", name: "Stream Rapids", book: "Stream Processing", after: ["ch10"], ed1: "Ch 11 Stream Processing (+ parts of Ch 12)",
+    blurb: "Message brokers vs logs, change data capture, event time and windows, stream joins, exactly-once processing." },
+  { id: "ch13", n: 13, icon: "⚖️", name: "The Compass", book: "Doing the Right Thing", after: ["ch11", "ch12"], ed1: "Ch 12 'Doing the Right Thing' section",
+    blurb: "Predictive analytics, bias and accountability, privacy and tracking, and data protection law." },
+  { id: "ch14", n: 14, icon: "🐉", name: "The Grand Gauntlet", book: "Whole-book capstone", after: ["ch13"], ed1: "—",
+    blurb: "Mixed review across the whole book, a full mock system-design interview, and a design doc for a real system at work." },
+]);
