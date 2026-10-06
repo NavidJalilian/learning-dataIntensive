@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Percentiles Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/game.css">
+<style>
+  body { --region: var(--r2); }
+  .ref-top { display: flex; gap: 12px; align-items: center; padding: 14px 0 0; font-size: 14px; }
+  .ref-top a { text-decoration: none; color: var(--ink-2); font-weight: 600; }
+  .ref-top .sp { flex: 1; }
+  .ref h1 { margin-bottom: 4px; }
+  .ref .sub { color: var(--ink-2); margin: 0 0 18px; font-family: var(--font-prose); font-size: 17px; }
+  .ref h2 { font-size: 18px; margin: 26px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--region); }
+  .ref ul { padding-left: 20px; margin: 6px 0; } .ref li { margin: 3px 0; }
+  .ref .formula { font: 600 16px var(--font-mono); background: var(--bg-2); padding: 8px 12px; border-radius: 8px; display: inline-block; margin: 4px 0; }
+  .ref .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  .ref .say { background: var(--xp-soft); border-radius: 9px; padding: 10px 14px; font-size: 15px; }
+  .ref .src { font-size: 12.5px; color: var(--ink-3); }
+  .ref td.n, .ref th.n { text-align: right; font-family: var(--font-mono); }
+  @media (max-width: 640px) { .ref .cols { grid-template-columns: 1fr; } }
+  @media print { .ref-top { display: none; } .ref h2 { break-after: avoid; } body { font-size: 12.5px; } .q-wrap { max-width: none; padding: 0; } }
+</style>
+</head>
+<body>
+<main class="q-wrap ref">
+  <div class="ref-top"><a href="../index.html">← Map</a><a href="../lessons/0203-percentiles.html">Lesson 2.3</a><span class="sp"></span><button class="q-btn ghost small" onclick="print()">🖨 Print</button></div>
+
+  <div class="q-kicker" style="margin-top:22px">🗼 DDIA Ch 2 · Reference</div>
+  <h1>Percentiles &amp; Tail Latency</h1>
+  <p class="sub">Response time is a distribution. Describe it with percentiles, watch the tail, and measure it honestly.</p>
+
+  <h2>The vocabulary</h2>
+  <table class="q-table">
+    <tr><th>Term</th><th>Means</th><th>Use it for</th></tr>
+    <tr><td><b>Mean</b></td><td>Sum ÷ count</td><td>Throughput and capacity maths. <em>Not</em> for describing user experience: outliers drag it.</td></tr>
+    <tr><td><b>p50 (median)</b></td><td>Half of requests are faster</td><td>The typical user's experience</td></tr>
+    <tr><td><b>p95 / p99 / p999</b></td><td>95% / 99% / 99.9% are faster</td><td>The tail: the users having a bad time</td></tr>
+    <tr><td><b>Tail latency</b></td><td>The high percentiles</td><td>SLOs, alerts, and interview requirements</td></tr>
+  </table>
+  <p><b>Nearest rank:</b> sort the <i>n</i> values. p<i>X</i> is the value at position ⌈<i>X</i>/100 × <i>n</i>⌉, counting from 1.</p>
+
+  <div class="cols">
+    <div>
+      <h2>Tail latency amplification</h2>
+      <p>One request fans out to <i>n</i> backends in parallel and waits for all of them. Each backend is slow with probability <i>p</i>:</p>
+      <p class="formula">P(slow) = 1 − (1 − p)ⁿ ≈ n·p (when n·p is small)</p>
+      <table class="q-table">
+        <tr><th class="n">n</th><th class="n">p = 1%</th><th class="n">p = 0.1%</th></tr>
+        <tr><td class="n">1</td><td class="n">1%</td><td class="n">0.1%</td></tr>
+        <tr><td class="n">10</td><td class="n">9.6%</td><td class="n">1.0%</td></tr>
+        <tr><td class="n">69</td><td class="n">50%</td><td class="n">6.7%</td></tr>
+        <tr><td class="n">100</td><td class="n">63%</td><td class="n">9.5%</td></tr>
+      </table>
+      <p>With a large fan-out, each backend's p99 effectively becomes the page's median. Fixes include hedged requests: after a short delay, send a backup request to another replica.</p>
+    </div>
+    <div>
+      <h2>Measure honestly</h2>
+      <ul>
+        <li><b>Measure on the client side.</b> Response time = queueing + service time + network.</li>
+        <li><b>Run open-loop load tests.</b> Send requests at a fixed rate, whatever the response time. A client that waits for each response hides queueing (<em>coordinated omission</em>).</li>
+        <li><b>Never average percentiles.</b> Merge histograms across servers or time windows, then read the percentile.</li>
+        <li><b>Slow requests hold up others.</b> A few slow requests can block everything queued behind them (<em>head-of-line blocking</em>).</li>
+      </ul>
+      <h2>SLI → SLO → SLA</h2>
+      <ul>
+        <li><b>SLI</b>: a measurement. <i>"p99 checkout latency per minute"</i></li>
+        <li><b>SLO</b>: a target for the SLI. <i>"&lt; 400 ms in 99.9% of minutes"</i></li>
+        <li><b>SLA</b>: a contract, with consequences for missing it. <i>"credit if missed"</i></li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Say it in an interview</h2>
+  <p class="say">"The read path target is <b>p99 under 200 ms</b>. This page fans out to about 20 services, so even at 1% slow per call, about 18% of page loads would hit a slow call. I'd give each dependency a tighter p99 budget, and hedge the reads that matter most."</p>
+
+  <p class="src">Sources: Kleppmann &amp; Riccomini, <em>DDIA</em> 2nd ed., Ch 2 (1st ed. Ch 1) · Dean &amp; Barroso, "The Tail at Scale", CACM 2013 · Gil Tene, "How NOT to Measure Latency" · Google SRE book, Ch 4 · Prometheus docs, "Histograms and summaries".</p>
+</main>
+<script src="../assets/game.js" data-root="../"></script>
+</body>
+</html>

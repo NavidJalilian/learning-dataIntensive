@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Review</title>
+<link rel="stylesheet" href="assets/game.css">
+<style>
+  .r-top { display: flex; align-items: center; gap: 12px; padding: 14px 0; }
+  .r-top a { text-decoration: none; color: var(--ink-2); font-weight: 600; font-size: 14px; }
+  .r-top .sp { flex: 1; }
+  .r-boxes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; align-items: end; height: 90px; margin: 10px 0 4px; }
+  .r-boxes div { background: var(--accent-soft); border-radius: 6px 6px 0 0; position: relative; min-height: 4px; }
+  .r-boxes div span { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font: 600 12px var(--font-mono); color: var(--ink-2); }
+  .r-box-labels { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 11.5px; color: var(--ink-3); text-align: center; }
+  .r-card { min-height: 260px; }
+  .r-from { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .r-from .q-chip { font-size: 12px; }
+</style>
+</head>
+<body>
+<main class="q-wrap">
+  <div class="r-top"><a href="index.html">← Map</a><span class="sp"></span><button class="q-btn ghost small" id="theme" aria-label="Toggle light / dark">◐</button></div>
+
+  <header class="q-hero" style="padding-top:8px">
+    <div class="q-kicker">Spaced repetition</div>
+    <h1>🃏 Daily Review</h1>
+    <p class="q-lede">Cards from every level you've cleared, mixed across chapters. A card you get right waits longer before it comes back: 1, 2, 4, 8, 16, then 32 days. A card you miss starts again at one day.</p>
+  </header>
+
+  <section class="q-step" id="deck-stats"></section>
+  <section class="q-step r-card" id="session"></section>
+
+  <p class="q-sidenote">Why this works: pulling an idea from memory, spaced over days and mixed with other topics, builds memory that lasts much longer than rereading.<a class="q-cite" href="#src-1">[1]</a><a class="q-cite" href="#src-2">[2]</a> It feels harder, and that difficulty is what does the work.</p>
+
+  <div class="q-ask"><span class="q-ask-icon">💬</span><div><b>Keep missing the same card?</b> Tell Claude which one. A card that keeps failing usually means the lesson needs another angle, not more repetition.</div></div>
+
+  <footer class="q-foot">
+    <ol style="font-size:13px;color:var(--ink-3);padding-left:18px">
+      <li id="src-1">Roediger &amp; Karpicke, "Test-Enhanced Learning", <em>Psychological Science</em> 17(3), 2006. <a href="https://journals.sagepub.com/doi/10.1111/j.1467-9280.2006.01693.x">doi:10.1111/j.1467-9280.2006.01693.x</a></li>
+      <li id="src-2">Cepeda et al., "Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis", <em>Psychological Bulletin</em> 132(3), 2006. <a href="https://doi.org/10.1037/0033-2909.132.3.354">doi:10.1037/0033-2909.132.3.354</a></li>
+    </ol>
+  </footer>
+</main>
+
+<script src="assets/game.js" data-root=""></script>
+<script>
+(function () {
+  const { h } = Quest;
+  const XP_PER_RIGHT = 5, SESSION_MAX = 20;
+  const BOX_LABEL = ["", "1 day", "2 days", "4 days", "8 days", "16 days", "32 days"];
+
+  document.getElementById("theme").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    Quest.theme(dark ? "light" : "dark");
+  });
+
+  function renderStats() {
+    const s = Quest.state();
+    const all = Quest.dueCards({ all: true });
+    const due = Quest.dueCards();
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    all.forEach((c) => counts[c.state.box]++);
+    const max = Math.max(1, ...counts);
+    const nextDue = all.filter((c) => c.state.due > Quest.today()).map((c) => c.state.due).sort()[0];
+    const el = document.getElementById("deck-stats");
+    el.innerHTML = "";
+    el.append(
+      h("div", { class: "q-step-head" }, [h("span", { class: "q-step-num", text: "📊" }), h("h2", { text: "Your deck" })]),
+      h("div", { class: "q-metrics" }, [
+        Quest.metric("Due now", String(due.length), due.length ? "warn" : "good"),
+        Quest.metric("Cards in deck", String(all.length)),
+        Quest.metric("Next due", nextDue || "—"),
+        Quest.metric("Streak", (s.lastDay === Quest.today() || s.lastDay === Quest.today(-1) ? s.streak : 0) + " 🔥"),
+      ]),
+    );
+    if (all.length) {
+      const boxes = h("div", { class: "r-boxes", "aria-label": "Cards per box" });
+      for (let b = 1; b <= 6; b++) boxes.append(h("div", { style: "height:" + Math.round((counts[b] / max) * 100) + "%" }, [h("span", { text: String(counts[b]) })]));
+      const labels = h("div", { class: "r-box-labels" });
+      for (let b = 1; b <= 6; b++) labels.append(h("div", { text: "Box " + b + " · " + BOX_LABEL[b] }));
+      el.append(h("p", { class: "q-sidenote", text: "Cards move right each time you recall them. Box 6 means you know it well." }), boxes, labels);
+    }
+  }
+
+  function session(cards, practice) {
+    const el = document.getElementById("session");
+    let i = 0, right = 0;
+    const total = Math.min(cards.length, SESSION_MAX);
+    cards = cards.slice(0, total);
+    function next() {
+      el.innerHTML = "";
+      if (i >= total) return finish();
+      const c = cards[i];
+      const region = Quest.content.regions.find((r) => r.id === c.level.region);
+      el.append(
+        h("div", { class: "q-q-count", text: (practice ? "Practice · " : "") + "Card " + (i + 1) + " of " + total }),
+        h("div", { class: "r-from" }, [h("span", { class: "q-chip", text: (region ? region.icon + " Ch " + region.n : "") + " · " + c.level.id + " " + c.level.title }), practice ? null : h("span", { class: "q-chip", text: "Box " + c.state.box })]),
+      );
+      const box = h("div");
+      el.append(box);
+      Quest.quiz(box, { ungraded: true, questions: [{ q: c.q, options: c.options, answer: c.answer, explain: c.explain }], onDone: (r) => {
+        const ok = r === 1;
+        if (ok) right++;
+        if (!practice) {
+          const st = Quest.gradeCard(c.id, ok);
+          Quest.toast(ok ? "📦 → Box " + st.box + " · back in " + BOX_LABEL[st.box] : "↩️ Back to Box 1 · see it tomorrow", ok ? "xp" : "");
+        }
+        i++;
+        setTimeout(next, 1100);
+      } });
+    }
+    function finish() {
+      const gain = practice ? 0 : right * XP_PER_RIGHT;
+      const res = Quest.addXP(gain, practice ? "Practice" : "Daily Review");
+      if (!practice && right === total) Quest.confetti(80);
+      el.append(
+        h("div", { class: "q-step-head" }, [h("span", { class: "q-step-num", text: "✓" }), h("h2", { text: practice ? "Practice done" : "Review done" })]),
+        h("div", { class: "q-metrics" }, [Quest.metric("Recalled", right + " / " + total, right === total ? "good" : ""), Quest.metric("XP", "+" + gain), Quest.metric("Rank", res.rank.icon + " " + res.rank.name)]),
+        h("p", { class: "q-sidenote", text: practice ? "Practice rounds don't move cards between boxes, so your schedule stays the same." : "Your streak counts today. Come back tomorrow for the cards that are due then." }),
+        h("div", { class: "q-row" }, [h("a", { class: "q-btn primary", href: "index.html" }, ["Back to map"]), h("button", { class: "q-btn", onclick: start }, ["Check again"])]),
+      );
+      if (res.rankUp) Quest.toast(res.rank.icon + " Rank up: " + res.rank.name, "xp");
+      renderStats();
+    }
+    next();
+  }
+
+  function start() {
+    renderStats();
+    const el = document.getElementById("session");
+    el.innerHTML = "";
+    const due = Quest.dueCards();
+    const all = Quest.dueCards({ all: true });
+    if (due.length) {
+      el.append(
+        h("div", { class: "q-step-head" }, [h("span", { class: "q-step-num", text: "▶" }), h("h2", { text: due.length + " card" + (due.length > 1 ? "s" : "") + " due" })]),
+        h("p", { text: "Answer from memory before you look at the options too closely. " + (due.length > SESSION_MAX ? "This round covers the first " + SESSION_MAX + "." : "") }),
+        h("div", { class: "q-row" }, [h("button", { class: "q-btn primary", onclick: () => session(due, false) }, ["Start review"])]),
+      );
+    } else if (all.length) {
+      el.append(
+        h("div", { class: "q-step-head" }, [h("span", { class: "q-step-num", text: "☕" }), h("h2", { text: "Nothing due right now" })]),
+        h("p", { text: "Every card is waiting for its next review date. Waiting is part of the method: recalling a card just before you'd forget it is what makes it stick." }),
+        h("div", { class: "q-row" }, [h("button", { class: "q-btn", onclick: () => session(Quest.shuffle(all), true) }, ["Practise anyway (schedule unchanged)"]), h("a", { class: "q-btn primary", href: "index.html" }, ["Back to map"])]),
+      );
+    } else {
+      el.append(
+        h("div", { class: "q-step-head" }, [h("span", { class: "q-step-num", text: "🌱" }), h("h2", { text: "Your deck is empty" })]),
+        h("p", { text: "Each level you clear adds 4–6 cards here. They first come due the day after you clear the level." }),
+        h("div", { class: "q-row" }, [h("a", { class: "q-btn primary", href: "index.html" }, ["Go to the map"])]),
+      );
+    }
+  }
+
+  Quest.loadContent().then(start);
+})();
+</script>
+</body>
+</html>

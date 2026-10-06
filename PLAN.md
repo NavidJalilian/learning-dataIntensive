@@ -42,15 +42,15 @@ Every region from 1 to 13 also has a **side quest** (work) and a **boss** (inter
 ## Architecture
 
 ```
-index.html               world map: player card, regions, level details, settings   (to build)
-review.html              Daily Review deck (spaced repetition across all chapters)    (to build)
+index.html               world map: player card, regions, level details, settings   ✅
+review.html              Daily Review deck (spaced repetition across all chapters)    ✅
 assets/game.css          design system (light/dark tokens, components)                ✅
 assets/game.js           engine: state, XP, ranks, streaks, Leitner review,           ✅
                          lesson HUD + gating, quiz/order/classify/recall/estimate/scenario/recallRun
 assets/regions.js        the 15 regions and their unlock graph                         ✅
 assets/levels/chNN.js    levels, bosses, quests, review cards per chapter             ✅ (plan data)
 lessons/NNLL-slug.html   lesson files: NN = chapter, LL = level (90 = quest, 99 = boss)
-reference/chNN-*.html    printable cheat sheet per chapter
+reference/chNN-*.html    printable cheat sheet per lesson/chapter (add each to SHELF in index.html)
 ```
 
 ### Lesson authoring contract
@@ -63,5 +63,6 @@ reference/chNN-*.html    printable cheat sheet per chapter
 1. ✅ Workspace: mission, resources, notes.
 2. ✅ Design system + game engine.
 3. ✅ Curriculum for the whole book (plan data for every region and level).
-4. ⏳ Foundation still to finish: `index.html` (map), `review.html`, model lesson `lessons/0203-percentiles.html` (registered in `ch02.js` but not written yet), headless-browser smoke test.
-5. ⏸️ Later (paused at your request): a fleet of agents to plan each chapter in detail, build every lesson, then verify them in Chromium.
+4. ✅ Foundation: `index.html` (map), `review.html`, Placement Run `lessons/0001-placement-run.html`, model lesson `lessons/0203-percentiles.html` + `reference/ch02-percentiles.html`. Headless-Chromium smoke test plays through all of them (desktop, mobile 390px, dark mode).
+5. ⏳ Waiting on the learner: play the Placement Run and paste the results into chat → write learning records, set pace in MISSION.md, pick the next lesson.
+6. ⏸️ Later (paused at your request): a fleet of agents to plan each chapter in detail, build every lesson, then verify them in Chromium.

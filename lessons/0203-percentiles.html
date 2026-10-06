@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Percentiles &amp; Tail Latency</title>
+<link rel="stylesheet" href="../assets/game.css">
+<style>
+  .lab-chart { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .lab-chart .bar { fill: var(--accent); opacity: .55; }
+  .lab-chart .bar.slow { fill: var(--bad); opacity: .8; }
+  .lab-chart .axis { stroke: var(--line-2); }
+  .lab-chart .mk { stroke-width: 2; }
+  .lab-chart .mk.p50 { stroke: var(--good); } .lab-chart .mk.p95 { stroke: var(--warn); }
+  .lab-chart .mk.p99 { stroke: var(--bad); } .lab-chart .mk.mean { stroke: var(--ink); stroke-dasharray: 4 3; }
+  .lab-chart text.lbl { font: 600 11px var(--font-mono); }
+  .lab-chart text.lbl.p50 { fill: var(--good); } .lab-chart text.lbl.p95 { fill: var(--warn); }
+  .lab-chart text.lbl.p99 { fill: var(--bad); } .lab-chart text.lbl.mean { fill: var(--ink); }
+  .lab-chart text.tick { fill: var(--ink-3); font: 11px var(--font-mono); }
+  .q-metric .d { font: 600 12px var(--font-mono); color: var(--ink-3); }
+  .q-metric.bad .d { color: var(--bad); }
+  .grid100 { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; max-width: 420px; margin: 10px 0; }
+  .grid100 i { aspect-ratio: 1; border-radius: 3px; background: var(--good); opacity: .55; }
+  .grid100 i.slow { background: var(--bad); opacity: 1; }
+  .formula { font: 600 17px var(--font-mono); padding: 10px 14px; background: var(--bg-2); border-radius: 10px; display: inline-block; }
+  .sorted { font: 14px/1.9 var(--font-mono); background: var(--bg-2); padding: 8px 12px; border-radius: 9px; word-spacing: 4px; }
+  .q-num-input { font: 600 15px var(--font-mono); width: 76px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); }
+</style>
+</head>
+<body style="--region: var(--r2)">
+<main class="q-wrap">
+
+  <header class="q-hero">
+    <div class="q-kicker">🗼 Latency Lighthouse · Level 2.3</div>
+    <h1>Percentiles &amp; Tail Latency</h1>
+    <p class="q-lede">The p99 line on your dashboard and the "what's your latency target?" question in interviews ask the same thing. Today you learn to read response times as a distribution and see why the slowest 1% matters most.</p>
+    <div class="q-meta"><span class="q-chip">⏱ 12–15 minutes</span><span class="q-chip xp">⚡ 100 XP</span><span class="q-chip">📖 DDIA Ch 2</span><a class="q-chip" href="../reference/ch02-percentiles.html">📄 Cheat sheet</a></div>
+  </header>
+
+  <!-- 1 · Recall Run -->
+  <section class="q-step">
+    <div class="q-step-head"><span class="q-step-num">1</span><h2>Recall Run</h2></div>
+    <div id="recall-run"></div>
+  </section>
+
+  <!-- 2 · Distribution + lab -->
+  <section class="q-step">
+    <div class="q-step-head"><span class="q-step-num">2</span><h2>Response time is a distribution</h2></div>
+    <div class="q-prose">
+      <p>Send the same request a thousand times and you get a thousand different response times. Most are quick. A few are very slow, because of a garbage-collection pause, a lost packet, a cold cache, or a request stuck in a queue behind a slow one.<a class="q-cite" href="#src-1">[1]</a> So "our latency" is not one number. It is a <em>distribution</em>.</p>
+      <p>The <span class="q-term">mean</span> is the wrong summary for it, because it doesn't tell you how many users had that experience. Use <span class="q-term">percentiles</span> instead. Sort every response time from fastest to slowest. The <strong>p50</strong> (the median) is the value halfway down the list: half the requests were faster. The <strong>p99</strong> is the value 99% of the way down: only 1 in 100 requests was slower. The slow end of the distribution is called the <span class="q-term">tail</span>, so high percentiles like p99 and p999 are <strong>tail latencies</strong>.<a class="q-cite" href="#src-1">[1]</a></p>
+    </div>
+    <div class="q-sim" id="lab">
+      <div class="q-sim-controls">
+        <div><label for="slow">Slow requests (pauses of 1.5–2.5 s): <b id="slow-v">0%</b></label><input type="range" id="slow" min="0" max="5" step="0.5" value="0"></div>
+        <div><label>1,000 requests to one service</label><span class="q-sidenote" style="margin:4px 0 0;border:0;padding:0">Normal requests take about 80 ms (median). Bars show how many requests landed at each response time. The x-axis is logarithmic.</span></div>
+      </div>
+      <svg class="lab-chart" id="lab-chart" viewBox="0 0 640 190" role="img" aria-label="Histogram of response times with markers for the mean and percentiles"></svg>
+      <div class="q-metrics" id="lab-metrics"></div>
+      <div class="q-goal" id="lab-goal">🎯 <span><b>Goal:</b> move the slider to <b>2%</b> slow requests. Watch which numbers jump and which hardly move.</span></div>
+    </div>
+  </section>
+
+  <!-- 3 · Reading drill -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">3</span><h2>Read the numbers</h2></div>
+    <div class="q-prose"><p>The simplest way to compute a percentile is the <em>nearest-rank</em> method. With <i>n</i> sorted values, p<i>X</i> is the value at position ⌈<i>X</i>/100 × <i>n</i>⌉, counting from 1. Monitoring tools estimate percentiles slightly differently, but they all mean the same thing.<a class="q-cite" href="#src-5">[5]</a> Here are 20 response times in milliseconds, already sorted:</p></div>
+    <div class="sorted">12 14 15 15 16 18 19 20 22 24 25 27 30 33 38 45 60 90 240 1900</div>
+    <div id="drill"></div>
+  </section>
+
+  <!-- 4 · Tail amplification -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">4</span><h2>Tails get worse when you fan out</h2></div>
+    <div class="q-prose">
+      <p>One user request often calls many backends in parallel and waits for <em>all</em> of them. Then the page is only as fast as its slowest call. Even if each backend is slow only rarely, the chance that <em>at least one</em> call is slow grows quickly with the number of calls. DDIA calls this <span class="q-term">tail latency amplification</span>.<a class="q-cite" href="#src-1">[1]</a></p>
+      <p>If each call is slow with probability <i>p</i>, and the calls are independent, the page is slow with probability:</p>
+    </div>
+    <p class="formula">P(page slow) = 1 − (1 − p)<sup>n</sup></p>
+    <div class="q-prose"><p>Google's Jeff Dean and Luiz Barroso give an example. A server is slow on 1 request in 100. If a user request goes to just that server, 1% of users wait. If the request fans out to 100 such servers, <strong>63%</strong> of user requests are slow.<a class="q-cite" href="#src-2">[2]</a></p></div>
+    <div class="q-sim" id="tail">
+      <div class="q-sim-controls">
+        <div><label for="fan">Backends per page load (fan-out): <input class="q-num-input" type="number" id="fan-n" min="1" max="200" value="1" aria-label="Fan-out number"></label><input type="range" id="fan" min="1" max="200" value="1"></div>
+        <div><label for="pslow">Each backend is slow on</label><select id="pslow"><option value="0.001">0.1% of calls (p999)</option><option value="0.005">0.5% of calls</option><option value="0.01" selected>1% of calls (p99)</option><option value="0.02">2% of calls</option><option value="0.05">5% of calls (p95)</option></select></div>
+      </div>
+      <div class="q-metrics"><div class="q-metric" id="tail-p"><div class="k">Page loads that are slow</div><div class="v">1.0%</div></div></div>
+      <div class="q-sidenote" style="margin:4px 0">100 simulated page loads. Red ones waited on at least one slow backend.</div>
+      <div class="grid100" id="grid" aria-hidden="true"></div>
+      <div class="q-goal" id="tail-goal">🎯 <span><b>Goal:</b> keep backends at <b>1%</b> slow. Find a fan-out <b>under 80</b> where <b>more than half</b> of page loads are slow.</span></div>
+    </div>
+    <div id="est"></div>
+  </section>
+
+  <!-- 5 · Measuring honestly -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">5</span><h2>Measure honestly, then set a target</h2></div>
+    <div class="q-prose">
+      <p><strong>Measure from the client's side, with an open loop.</strong> A load-test client that waits for each response before it sends the next request slows down whenever the server slows down. Queues never build up, and the tail looks better than it really is. Real users don't wait for each other. Keep sending requests at a fixed rate, whatever the response time.<a class="q-cite" href="#src-1">[1]</a> Gil Tene calls this measurement error <em>coordinated omission</em>.<a class="q-cite" href="#src-3">[3]</a></p>
+      <p><strong>Never average percentiles.</strong> The mean of ten servers' p99s is not the fleet's p99. Averaging percentiles is mathematically meaningless. To combine data from several servers or time windows, add their histograms together, then read the percentile from the combined histogram.<a class="q-cite" href="#src-1">[1]</a><a class="q-cite" href="#src-5">[5]</a></p>
+      <p><strong>Then write the target down.</strong> Google's SRE book uses three terms.<a class="q-cite" href="#src-4">[4]</a> A <span class="q-term">SLI</span> (service level indicator) is a carefully defined measurement, such as p99 latency. A <span class="q-term">SLO</span> (service level objective) is a target value for an SLI. A <span class="q-term">SLA</span> (service level agreement) is a contract with users that says what happens if you miss the SLOs in it.</p>
+    </div>
+    <div id="sli"></div>
+  </section>
+
+  <!-- 6 · Incident -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">6</span><h2>Incident: the checkout alarm</h2></div>
+    <p class="q-sidenote" style="margin-top:0">You're on call. Each wrong call costs the service some health. Use everything from this level.</p>
+    <div id="incident"></div>
+  </section>
+
+  <!-- 7 · Free recall -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">7</span><h2>Say it in your own words</h2></div>
+    <div id="explain"></div>
+  </section>
+
+  <div class="q-callout interview"><span class="q-callout-title">🎤 In the interview</span>
+    <p>When you state a latency requirement, give a percentile and a number: "Reads at p99 under 200 ms." When your design fans out (for example scatter-gather search, or a feed built from many services), say that it amplifies the tail. Then name a mitigation. One example is a <em>hedged request</em>: send a backup copy to another replica if the first is slow. In one Google benchmark, hedging after 10 ms cut p999 from 1,800 ms to 74 ms for only 2% more requests.<a class="q-cite" href="#src-2">[2]</a></p></div>
+  <div class="q-callout work"><span class="q-callout-title">🛠 At work</span>
+    <p>Look at a latency dashboard you own. Does it show the mean, or percentiles? Do the percentiles come from merged histograms, or from averaging per-server values? The <a href="../index.html#ch02">Ch 2 side quest</a> walks you through it.</p></div>
+
+  <div class="q-read">
+    <div class="q-read-icon">📖</div>
+    <div><b>Read next: DDIA 2nd ed., Chapter 2, "Describing Performance"</b>
+      <p>The sections on average, median and percentiles, and on how response-time metrics are used.<a class="q-cite" href="#src-1">[1]</a> (In the 1st edition, this is Chapter 1, "Describing Performance".)</p>
+      <p><b>Best primary source:</b> Dean &amp; Barroso, <a href="https://cacm.acm.org/research/the-tail-at-scale/">"The Tail at Scale"</a> (CACM, 2013). It's eight pages, from the engineers who ran Google search. Read it after this level.<a class="q-cite" href="#src-2">[2]</a></p></div>
+  </div>
+
+  <div class="q-ask"><span class="q-ask-icon">💬</span><div><b>Something unclear?</b> Ask me in the chat. For example: "Why is the mean so far above the median?", "How does Prometheus estimate p99 from buckets?", or "Explain hedged requests." I'm your teacher here, and follow-up questions are how this sticks.</div></div>
+
+  <div id="q-finish"></div>
+
+  <footer class="q-foot">
+    <nav>
+      <a href="../index.html#ch02">← 2.2 Latency, Response Time, Throughput</a>
+      <a href="../reference/ch02-percentiles.html">📄 Cheat sheet</a>
+      <a href="../index.html#ch02">2.4 Reliability →</a>
+    </nav>
+    <ol style="font-size:13px;color:var(--ink-3);margin-top:18px;padding-left:18px">
+      <li id="src-1">Kleppmann &amp; Riccomini, <a href="https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/"><em>Designing Data-Intensive Applications</em>, 2nd ed.</a> (O'Reilly, 2026), Ch 2, "Describing Performance". Same material in the 1st ed., Ch 1.</li>
+      <li id="src-2">Dean &amp; Barroso, <a href="https://cacm.acm.org/research/the-tail-at-scale/">"The Tail at Scale"</a>, <em>Communications of the ACM</em> 56(2), 2013.</li>
+      <li id="src-3">Gil Tene, <a href="https://www.slideshare.net/slideshow/how-not-to-measure-latency-60111840/60111840">"How NOT to Measure Latency"</a> (talk, 2013–2016).</li>
+      <li id="src-4">Beyer et al., <a href="https://sre.google/sre-book/service-level-objectives/"><em>Site Reliability Engineering</em>, Ch 4 "Service Level Objectives"</a> (O'Reilly / Google, 2016).</li>
+      <li id="src-5">Prometheus documentation, <a href="https://prometheus.io/docs/practices/histograms/">"Histograms and summaries"</a>.</li>
+      <li id="src-6">DeCandia et al., <a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf">"Dynamo: Amazon's Highly Available Key-value Store"</a>, SOSP 2007. The original source for Amazon's 99.9th-percentile targets, which DDIA cites.</li>
+    </ol>
+  </footer>
+</main>
+
+<script src="../assets/game.js" data-root="../"></script>
+<script>
+(function () {
+  const L = Quest.lesson({ id: "2.3", region: "ch02", title: "Percentiles & Tail Latency" });
+  const { h } = Quest;
+
+  /* ---------- 1 · Recall Run ---------- */
+  Quest.recallRun("#recall-run", { count: 3 });
+
+  /* ---------- 2 · Percentile lab ---------- */
+  function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const R = rng(20261006), N = 1000;
+  function gauss() { let u = 0, v = 0; while (!u) u = R(); while (!v) v = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  const base = [], pick = [], slowMs = [];
+  for (let i = 0; i < N; i++) { base.push(80 * Math.exp(0.5 * gauss())); slowMs.push(1500 + 1000 * R()); }
+  // pick[i] = a random rank / N, so "2% slow" makes exactly 20 requests slow
+  Quest.shuffle(base.map((_, i) => i), 7).forEach((idx, rank) => (pick[idx] = rank / N));
+  function sample(frac) { return base.map((b, i) => (pick[i] < frac ? slowMs[i] : b)); }
+  function stats(arr) {
+    const s = arr.slice().sort((a, b) => a - b);
+    const at = (p) => s[Math.max(0, Math.ceil((p / 100) * s.length) - 1)];
+    return { mean: s.reduce((a, b) => a + b, 0) / s.length, p50: at(50), p95: at(95), p99: at(99), p999: at(99.9), max: s[s.length - 1] };
+  }
+  const baseline = stats(sample(0));
+  const ms = (v) => (v >= 1000 ? (v / 1000).toFixed(2) + " s" : Math.round(v) + " ms");
+  const labUnit = L.register(document.getElementById("lab"));
+  const slider = document.getElementById("slow");
+  const W = 640, H = 190, PADL = 14, PADR = 14, TOP = 46, BOT = 160, LO = Math.log10(10), HI = Math.log10(5000);
+  const xOf = (v) => PADL + ((Math.log10(Math.max(10, Math.min(5000, v))) - LO) / (HI - LO)) * (W - PADL - PADR);
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function sv(tag, attrs, text) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+
+  function drawLab() {
+    const frac = parseFloat(slider.value) / 100;
+    document.getElementById("slow-v").textContent = slider.value + "%";
+    const data = sample(frac), st = stats(data);
+    const svg = document.getElementById("lab-chart");
+    svg.innerHTML = "";
+    const BINS = 48, counts = new Array(BINS).fill(0), slowBin = new Array(BINS).fill(false);
+    data.forEach((v, i) => { const b = Math.min(BINS - 1, Math.max(0, Math.floor(((Math.log10(Math.max(10, v)) - LO) / (HI - LO)) * BINS))); counts[b]++; if (pick[i] < frac) slowBin[b] = true; });
+    const maxC = Math.max(...counts), bw = (W - PADL - PADR) / BINS;
+    counts.forEach((c, b) => {
+      if (!c) return;
+      const hgt = Math.max(2, (Math.sqrt(c) / Math.sqrt(maxC)) * (BOT - TOP));
+      svg.append(sv("rect", { class: "bar" + (slowBin[b] ? " slow" : ""), x: PADL + b * bw + 1, y: BOT - hgt, width: bw - 2, height: hgt, rx: 2 }));
+    });
+    svg.append(sv("line", { class: "axis", x1: PADL, x2: W - PADR, y1: BOT, y2: BOT }));
+    [10, 30, 100, 300, 1000, 3000].forEach((t) => svg.append(sv("text", { class: "tick", x: xOf(t), y: BOT + 18, "text-anchor": "middle" }, t >= 1000 ? t / 1000 + "s" : t + "ms")));
+    const marks = [["p50", st.p50], ["mean", st.mean], ["p95", st.p95], ["p99", st.p99]];
+    marks.forEach(([k, v], i) => {
+      const x = xOf(v);
+      svg.append(sv("line", { class: "mk " + k, x1: x, x2: x, y1: TOP - 4 - (i % 2) * 0, y2: BOT }));
+      svg.append(sv("text", { class: "lbl " + k, x: Math.min(W - 40, Math.max(18, x)), y: 14 + (i % 4) * 9.5, "text-anchor": "middle" }, k));
+    });
+    const met = document.getElementById("lab-metrics");
+    met.innerHTML = "";
+    [["Mean", "mean"], ["p50", "p50"], ["p95", "p95"], ["p99", "p99"], ["p999", "p999"], ["Max", "max"]].forEach(([label, k]) => {
+      const ratio = st[k] / baseline[k];
+      const cls = ratio > 1.3 ? "bad" : "";
+      const m = Quest.metric(label, ms(st[k]), cls);
+      m.append(h("div", { class: "d", text: ratio > 1.02 ? "×" + ratio.toFixed(1) + " vs 0%" : "unchanged" }));
+      met.append(m);
+    });
+    if (frac >= 0.02 && !labUnit.reached) {
+      labUnit.reached = true;
+      const g = document.getElementById("lab-goal");
+      g.classList.add("done");
+      g.innerHTML = "✅ <span><b>Goal reached.</b> With 2% slow requests, the mean grows by about half, and p99 jumps about nine-fold, from roughly 225 ms to 2 s. p50 and p95 barely change. A p95 dashboard would miss this incident completely.</span>";
+      Quest.toast("🎯 Lab goal reached", "xp");
+      labUnit.complete();
+    }
+  }
+  slider.addEventListener("input", drawLab);
+  drawLab();
+
+  /* ---------- 3 · Reading drill ---------- */
+  Quest.quiz("#drill", { questions: [
+    { q: "Using nearest rank on those 20 values, what is <b>p50</b>?", options: ["24 ms", "25 ms", "133 ms", "90 ms"], answer: 0,
+      explain: "⌈0.5 × 20⌉ = 10, so p50 is the 10th value: 24 ms. (The mean is 133 ms: the one 1.9 s request pulls it far above most requests.)" },
+    { q: "Same 20 values. What is <b>p95</b>?", options: ["240 ms", "1900 ms", "90 ms", "133 ms"], answer: 0,
+      explain: "⌈0.95 × 20⌉ = 19, so p95 is the 19th value: 240 ms. Only one request (5%) was slower." },
+    { q: "Back in the lab, at 2% slow requests, which number <b>barely moved</b>?", options: ["The p95 value", "The p99 value", "The mean value", "The max value"], answer: 0,
+      explain: "Only 2% of requests were slow, so 95% of requests were still normal and p95 stayed put. A p95-only dashboard hides an incident that hits 1 in 50 users." },
+    { q: "Amazon sets response-time targets for internal services at <b>p99.9</b>. Why so far out in the tail?", options: ["Slowest requests often belong to its best customers", "The median cannot be computed across many servers", "Higher percentiles are cheaper to store and compute", "Users only notice the very slowest request ever"], answer: 0,
+      explain: "The customers with the slowest requests are often the ones with the most data, such as long purchase histories. They are the most valuable customers.<a class='q-cite' href='#src-1'>[1]</a><a class='q-cite' href='#src-6'>[6]</a> Pushing to p99.99 was judged too expensive for the benefit." },
+  ] });
+
+  /* ---------- 4 · Tail amplification simulator ---------- */
+  const tailUnit = L.register(document.getElementById("tail"));
+  const fan = document.getElementById("fan"), fanN = document.getElementById("fan-n"), ps = document.getElementById("pslow");
+  const grid = document.getElementById("grid");
+  for (let i = 0; i < 100; i++) grid.append(document.createElement("i"));
+  const R2 = rng(42);
+  function drawTail(src) {
+    let n = parseInt(src === "num" ? fanN.value : fan.value, 10);
+    if (!isFinite(n)) return;
+    n = Math.max(1, Math.min(200, n));
+    fan.value = n; if (src !== "num") fanN.value = n;
+    const p = parseFloat(ps.value);
+    const P = 1 - Math.pow(1 - p, n);
+    const box = document.getElementById("tail-p");
+    box.querySelector(".v").textContent = (P * 100).toFixed(1) + "%";
+    box.className = "q-metric " + (P > 0.5 ? "bad" : P > 0.1 ? "warn" : "good");
+    Array.from(grid.children).forEach((c) => c.classList.toggle("slow", R2() < P));
+    if (!tailUnit.reached && p === 0.01 && P > 0.5 && n < 80) {
+      tailUnit.reached = true;
+      const g = document.getElementById("tail-goal");
+      g.classList.add("done");
+      g.innerHTML = "✅ <span><b>Goal reached at fan-out " + n + ".</b> The crossover is 69 backends: 1 − 0.99⁶⁹ ≈ 50%. From there on, most users wait on at least one backend's p99. In a fan-out, each backend's p99 effectively becomes the page's median.</span>";
+      Quest.toast("🎯 Simulator goal reached", "xp");
+      tailUnit.complete();
+    }
+  }
+  fan.addEventListener("input", () => drawTail("range"));
+  fanN.addEventListener("input", () => drawTail("num"));
+  ps.addEventListener("change", () => drawTail("range"));
+  drawTail("range");
+
+  Quest.estimate("#est", {
+    prompt: "Back-of-the-envelope: checkout calls <b>10 services</b> in parallel. Each one has a p99 of 1 s, so 1% of its calls are slow. What percentage of checkouts take at least 1 s?",
+    answer: 9.56, factor: 1.3, unit: "%", placeholder: "e.g. 5",
+    hint: "the chance that all 10 calls are fast is 0.99¹⁰. Take that away from 1.",
+    explain: "1 − 0.99¹⁰ ≈ 0.096, so about <b>1 checkout in 10</b>. A shortcut for small p: P ≈ n × p = 10 × 1% = 10%.",
+  });
+
+  /* ---------- 5 · SLI / SLO / SLA ---------- */
+  Quest.classify("#sli", {
+    prompt: "Sort each statement: is it an indicator, an objective, or an agreement?",
+    buckets: [{ id: "sli", label: "📏 SLI: a measurement" }, { id: "slo", label: "🎯 SLO: a target" }, { id: "sla", label: "📜 SLA: a contract" }],
+    items: [
+      { text: "p99 latency of checkout, per minute", bucket: "sli", explain: "A measurement with no target attached. That makes it an indicator.", hint: "Is there a target or a consequence in it?" },
+      { text: "Fraction of requests returning 5xx", bucket: "sli", explain: "Error rate is a classic SLI.", hint: "Is there a target or a consequence in it?" },
+      { text: "p99 checkout < 400 ms in 99.9% of minutes", bucket: "slo", explain: "A target for an SLI, over a time window.", hint: "There's a target, but is there a penalty?" },
+      { text: "99.95% of requests succeed each month", bucket: "slo", explain: "A target for the success-rate SLI.", hint: "There's a target, but is there a penalty?" },
+      { text: "Customers get 10% credit below 99.9% uptime", bucket: "sla", explain: "A consequence for missing an objective. That makes it an agreement.", hint: "What happens if it's missed?" },
+      { text: "Contract: refund if p99 > 1 s for a day", bucket: "sla", explain: "A contract with a consequence.", hint: "What happens if it's missed?" },
+    ],
+    explain: "SLI = what you measure. SLO = the target. SLA = the promise to customers, with consequences.",
+  });
+
+  /* ---------- 6 · Incident ---------- */
+  Quest.scenario("#incident", {
+    title: "🚨 Checkout p99 alarm",
+    hpLabel: "🛒 Checkout health",
+    tag: "On call",
+    steps: [
+      { situation: "Monday 10:02. The alert <b>checkout p99 &gt; 1 s</b> fires. The dashboard shows <b>mean latency flat at 120 ms</b>. A teammate writes: <i>“Mean looks fine, probably a noisy alert. Mute it?”</i>",
+        choices: [
+          { text: "Keep it: a flat mean hides bad tails", correct: true, feedback: "Right. In the lab, a 2% slow tail barely moved the mean. And 1% of checkouts is a lot of real customers." },
+          { text: "Mute it: the mean shows users are fine", feedback: "The mean blends the tail with fast requests, so a flat mean says almost nothing about the slowest 1%." },
+          { text: "Mute it: only one percent of users notice", feedback: "At scale, 1% of checkouts is a lot of people. Per Amazon, they're often your most valuable customers." },
+          { text: "Restart every checkout pod and watch the mean", feedback: "You'd be acting before diagnosing, and watching the metric that can't see the problem." },
+        ] },
+      { situation: "Checkout calls <b>8 services in parallel</b> and waits for all of them. Per-service p99s: inventory 90 ms · <b>pricing 2.1 s (was 150 ms)</b> · payments 300 ms · the other five under 100 ms. Where do you look first?",
+        choices: [
+          { text: "Pricing: its tail now sets checkout's tail", correct: true, feedback: "Yes. Checkout waits for every call, so whenever pricing is slow, checkout is slow too." },
+          { text: "Payments: it's the slowest call on average", feedback: "Payments has a steady 300 ms p99 and it hasn't changed. Look for what changed in the tail." },
+          { text: "Inventory: it is called most often overall", feedback: "How often a service is called doesn't decide the tail. Which service's p99 jumped?" },
+          { text: "All eight equally: each one is called", feedback: "They're all on the critical path, but only one of them changed. Start there." },
+        ] },
+      { situation: "The pricing team ships a fix and says: <i>“Our load test shows p99 = 140 ms.”</i> Their load tool sends one request, <b>waits for the response</b>, then sends the next.",
+        choices: [
+          { text: "Retest at a fixed rate: the tool hides queues", correct: true, feedback: "Exactly. A client that waits slows down when the server slows down, so queues never form and the tail looks better than it is. Use an open-loop test at a fixed arrival rate." },
+          { text: "Trust it: a load test is the gold standard", feedback: "Only if it's run honestly. This one is closed-loop: it waits for each response, which hides queueing delay." },
+          { text: "Trust it: p99 in tests always matches real production", feedback: "Test traffic rarely looks like production, and this test is closed-loop on top of that." },
+          { text: "Retest with fewer clients so the numbers are stable", feedback: "Fewer clients means even less queueing, so the test flatters the tail even more." },
+        ] },
+      { situation: "Postmortem action item: write a latency SLO for checkout into the design doc. Which one would you sign off?",
+        choices: [
+          { text: "p99 under 400 ms in 99.9% of minutes monthly", correct: true, feedback: "A percentile SLI, a threshold, and a compliance window. That's an SLO you can measure and alert on." },
+          { text: "Mean latency below 120 ms, averaged over each month", feedback: "This incident had a flat mean. A mean-based SLO would never have fired." },
+          { text: "Average of every server's p99 kept below 400 ms", feedback: "Averaging percentiles is mathematically meaningless. Merge the servers' histograms, then read p99 from the result." },
+          { text: "No checkout request should ever take over 400 ms", feedback: "There is always a tail. A 100% target can't be met, so people start ignoring it." },
+        ] },
+    ],
+    winTitle: "Incident resolved.", win: "You protected the tail, found the backend that caused it, caught a misleading test, and wrote an SLO you can measure.",
+    lose: "You got there in the end. Replay this level in a few days and the right calls will come faster.",
+  });
+
+  /* ---------- 7 · Free recall ---------- */
+  Quest.recall("#explain", {
+    prompt: "A teammate asks: <i>“Why alert on p99 and not the mean? And why is checkout's p99 worse than any single service's?”</i> Answer in 2–3 sentences, without scrolling up.",
+    answer: "The mean mixes a few very slow requests in with lots of fast ones. It can stay flat while 1 in 100 users waits seconds, and those users are often the most valuable. p99 measures that tail directly. Checkout waits for all of its parallel calls, so it's slow whenever <i>any</i> of them is slow: with n calls each slow with probability p, checkout is slow with probability 1 − (1 − p)ⁿ. That is tail latency amplification.",
+  });
+
+  Quest.loadContent();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Quest</title>
+<link rel="stylesheet" href="assets/game.css">
+<style>
+  .m-top { display: flex; align-items: center; gap: 12px; padding: 18px 0 6px; }
+  .m-logo { font: 700 20px var(--font-display); letter-spacing: -.01em; flex: 1; }
+  .m-logo small { display: block; font: 500 13px var(--font-body); color: var(--ink-3); letter-spacing: 0; }
+
+  .m-player { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); margin: 12px 0 14px; }
+  .m-rank-icon { font-size: 44px; line-height: 1; grid-row: span 2; }
+  .m-rank-name { font: 700 22px var(--font-display); }
+  .m-rank-name small { font: 500 14px var(--font-body); color: var(--ink-3); margin-left: 6px; }
+  .m-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 10px; }
+  .m-stats .q-metric .v { font-size: 20px; }
+
+  .m-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 26px; }
+  .m-actions .q-btn { min-height: 48px; }
+  .m-badge { background: var(--bad); color: #fff; border-radius: 999px; font-size: 12px; padding: 1px 8px; }
+
+  .m-trail { position: relative; display: grid; gap: 14px; }
+  .m-region { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; border-left: 6px solid var(--rc); }
+  .m-region > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; align-items: center; padding: 16px 18px; }
+  .m-region > summary::-webkit-details-marker { display: none; }
+  .m-region .m-icon { font-size: 34px; line-height: 1; grid-row: span 2; }
+  .m-region .m-name { font: 700 18px var(--font-display); }
+  .m-region .m-name small { font: 600 12px var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--rc); display: block; }
+  .m-region .m-book { font-size: 13.5px; color: var(--ink-2); grid-column: 2; }
+  .m-region .m-status { grid-row: span 2; text-align: right; font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+  .m-region .m-bar { height: 6px; width: 90px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 6px; margin-left: auto; }
+  .m-region .m-bar i { display: block; height: 100%; background: var(--rc); }
+  .m-region.locked { opacity: .62; }
+  .m-region.locked .m-icon { filter: grayscale(1); }
+  .m-region[open] > summary { border-bottom: 1px solid var(--line); }
+  .m-body { padding: 14px 18px 18px; }
+  .m-blurb { font-family: var(--font-prose); font-size: 16.5px; color: var(--ink-2); margin: 0 0 6px; }
+  .m-ed1 { font-size: 13px; color: var(--ink-3); margin: 0 0 12px; }
+  .m-pl { display: inline-block; font: 600 11.5px var(--font-display); letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+  .m-pl.known { background: var(--good-soft); color: var(--good); }
+  .m-pl.mixed { background: var(--warn-soft); color: var(--warn); }
+  .m-pl.new { background: var(--bad-soft); color: var(--bad); }
+
+  .m-levels { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .m-level { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+  .m-level > details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+  .m-level > details > summary::-webkit-details-marker { display: none; }
+  .m-level .m-lid { font: 600 12.5px var(--font-mono); color: var(--ink-3); width: 54px; flex: none; }
+  .m-level .m-lt { flex: 1; font-weight: 600; font-size: 15px; min-width: 0; }
+  .m-level .m-lt small { display: block; font-weight: 500; font-size: 12.5px; color: var(--ink-3); }
+  .m-level .m-stars { font-size: 13px; letter-spacing: 1px; white-space: nowrap; }
+  .m-level .m-tag { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .m-level.boss { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+  .m-level.quest { border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+  .m-level.done { background: var(--good-soft); border-color: transparent; }
+  .m-detail { padding: 0 12px 12px 76px; font-size: 14.5px; color: var(--ink-2); }
+  .m-detail p { margin: 4px 0; }
+  .m-detail b { color: var(--ink); }
+
+  .m-settings { margin-top: 36px; }
+  .m-settings .q-row { margin-top: 8px; }
+  .m-switch { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
+  .m-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .m-shelf { display: grid; gap: 8px; }
+  .m-shelf a { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); text-decoration: none; color: var(--ink); font-weight: 600; }
+  .m-shelf a small { color: var(--ink-3); font-weight: 500; }
+
+  @media (max-width: 560px) {
+    .m-region > summary { grid-template-columns: auto 1fr; }
+    .m-region .m-status { grid-row: auto; grid-column: 2; text-align: left; }
+    .m-region .m-bar { margin-left: 0; }
+    .m-detail { padding-left: 12px; }
+    .m-level .m-lid { width: 42px; }
+  }
+</style>
+</head>
+<body>
+<main class="q-wide" style="max-width:860px">
+  <div class="m-top">
+    <div class="m-logo">🗺️ DDIA Quest<small>A game through <em>Designing Data-Intensive Applications</em>, 2nd ed.</small></div>
+    <button class="q-btn ghost small" id="theme" aria-label="Toggle light / dark">◐</button>
+  </div>
+
+  <section class="m-player" id="player" aria-live="polite"></section>
+  <div class="m-actions" id="actions"></div>
+
+  <h2 style="margin-top:8px">The map</h2>
+  <p class="q-sidenote" style="margin-top:0">Each region is one chapter. Beat a region's boss to open the regions after it. Levels marked <em>coming soon</em> appear as they're built. Ask Claude in the chat for the next one.</p>
+  <div class="m-trail" id="trail"></div>
+
+  <section class="m-settings">
+    <h2>Reference shelf</h2>
+    <p class="q-sidenote" style="margin-top:0">One-page cheat sheets, made to print. Each one is the short version of a lesson.</p>
+    <div class="m-shelf" id="shelf"></div>
+
+    <h2>Settings</h2>
+    <label class="m-switch"><input type="checkbox" id="free"> Free roam: open every region and boss</label>
+    <p class="q-sidenote">Useful if the Placement Run shows you already know a chapter, or if you're reading the book out of order.</p>
+    <div class="q-row">
+      <button class="q-btn small" id="export">⬇️ Export progress</button>
+      <label class="q-btn small" style="cursor:pointer">⬆️ Import progress<input type="file" id="import" accept="application/json,.json" hidden></label>
+      <button class="q-btn small ghost" id="reset">Reset everything</button>
+    </div>
+    <p class="q-sidenote">Progress is saved in this browser only. Export it to move to another device, or before clearing site data.</p>
+  </section>
+
+  <footer class="q-foot">
+    <nav><span>Why you're here: <a href="MISSION.md">MISSION.md</a> · Course plan: <a href="PLAN.md">PLAN.md</a> · Sources: <a href="RESOURCES.md">RESOURCES.md</a></span></nav>
+    <div class="q-ask"><span class="q-ask-icon">💬</span><div><b>Stuck or curious?</b> Ask Claude in the chat. It's your teacher here: it builds the next lesson, explains what didn't click, and plays the interviewer for bosses.</div></div>
+  </footer>
+</main>
+
+<script src="assets/game.js" data-root=""></script>
+<script>
+(function () {
+  const { h } = Quest;
+  const TYPE = { level: "📘", boss: "🐉", quest: "🗝️", placement: "🎯" };
+  const TYPE_NAME = { level: "Level", boss: "Boss", quest: "Side quest", placement: "Placement" };
+  // Reference sheets that exist so far. Add one line per sheet as they're written.
+  const SHELF = [
+    { href: "reference/ch02-percentiles.html", title: "Percentiles & tail latency", region: "🗼 Ch 2" },
+  ];
+
+  document.getElementById("theme").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    Quest.theme(dark ? "light" : "dark");
+  });
+
+  function stars(n) { return "★".repeat(n) + "☆".repeat(3 - n); }
+
+  function renderPlayer(s) {
+    const all = Object.values(Quest.content.levels);
+    const done = all.filter((l) => s.done[l.id]);
+    const starCount = done.reduce((a, l) => a + (s.done[l.id].stars || 0), 0);
+    const rank = Quest.rankFor(s.xp);
+    const streakAlive = s.lastDay === Quest.today() || s.lastDay === Quest.today(-1);
+    const el = document.getElementById("player");
+    el.innerHTML = "";
+    const bar = h("i");
+    el.append(
+      h("div", { class: "m-rank-icon", text: rank.icon }),
+      h("div", { class: "m-rank-name" }, [rank.name, h("small", { text: s.xp + " XP" })]),
+      h("div", {}, [
+        h("div", { class: "q-rank-bar" }, [bar]),
+        h("div", { class: "q-sidenote", style: "border:0;padding:0;margin:6px 0 0", text: rank.next ? (rank.next.xp - s.xp) + " XP to " + rank.next.icon + " " + rank.next.name : "Top rank reached." }),
+      ]),
+      h("div", { class: "m-stats" }, [
+        Quest.metric("Streak", (streakAlive ? s.streak : 0) + " 🔥"),
+        Quest.metric("Best streak", (s.bestStreak || 0) + " days"),
+        Quest.metric("Cleared", done.length + " / " + all.length),
+        Quest.metric("Stars", starCount + " ★"),
+      ]),
+    );
+    setTimeout(() => (bar.style.width = Math.round(rank.pct * 100) + "%"), 50);
+  }
+
+  function renderActions(s) {
+    const el = document.getElementById("actions");
+    el.innerHTML = "";
+    const next = Quest.nextLevel(s, { builtOnly: true });
+    const due = Quest.dueCards().length;
+    if (next) el.append(h("a", { class: "q-btn primary", href: Quest.href(next) }, ["▶ " + (s.done["0.1"] ? "Continue: " : "Start: ") + next.id + " " + next.title]));
+    else el.append(h("span", { class: "q-btn", style: "cursor:default" }, ["✅ You've played every level built so far. Ask Claude for the next one."]));
+    el.append(h("a", { class: "q-btn", href: "review.html" }, ["🃏 Daily Review", due ? h("span", { class: "m-badge", text: due + " due" }) : h("small", { style: "color:var(--ink-3)", text: "nothing due" })]));
+  }
+
+  function levelRow(l, s, regionOpen) {
+    const rec = s.done[l.id];
+    const open = regionOpen && Quest.levelOpen(l, s);
+    const built = !!l.file;
+    const li = h("li", { class: "m-level " + l.type + (rec ? " done" : "") });
+    const d = h("details");
+    let right;
+    if (rec) right = h("span", { class: "m-stars", title: rec.stars + " of 3 stars", text: stars(rec.stars || 1) });
+    else if (!open) right = h("span", { class: "m-tag", text: "🔒" });
+    else if (!built) right = h("span", { class: "m-tag", text: "coming soon" });
+    else right = h("a", { class: "q-btn primary small", href: Quest.href(l), onclick: (e) => e.stopPropagation() }, ["Play"]);
+    d.append(h("summary", {}, [
+      h("span", { class: "m-lid", text: l.type === "level" || l.type === "placement" ? l.id : TYPE[l.type] }),
+      h("span", { class: "m-lt" }, [l.title, h("small", { text: TYPE_NAME[l.type] + " · " + l.xp + " XP" })]),
+      right,
+    ]));
+    const det = h("div", { class: "m-detail" });
+    if (l.skill) det.append(h("p", { html: "<b>Skill:</b> " + l.skill }));
+    if (l.game) det.append(h("p", { html: "<b>Game:</b> " + l.game }));
+    if (l.read) det.append(h("p", { html: "<b>Read:</b> " + l.read }));
+    if (rec) det.append(h("p", { html: "<b>Best:</b> " + Math.round((rec.best || 0) * 100) + "% · played " + (rec.plays || 1) + "× · last " + rec.date }));
+    if (rec && built) det.append(h("p", {}, [h("a", { href: Quest.href(l) }, ["Replay →"])]));
+    d.append(det);
+    li.append(d);
+    return li;
+  }
+
+  function renderTrail(s) {
+    const trail = document.getElementById("trail");
+    const openIds = new Set(Array.from(trail.querySelectorAll("details.m-region[open]")).map((d) => d.id));
+    trail.innerHTML = "";
+    const want = location.hash.slice(1);
+    const next = Quest.nextLevel(s);
+    const pl = (s.placement && s.placement.summary) || {};
+    Quest.content.regions.forEach((r) => {
+      const lv = Quest.levelsOf(r.id);
+      const ropen = Quest.regionOpen(r, s);
+      const cleared = Quest.regionCleared(r.id, s);
+      const doneN = lv.filter((l) => s.done[l.id]).length;
+      const det = h("details", { class: "m-region" + (ropen ? "" : " locked"), id: r.id, style: "--rc: var(--r" + r.n + ")" });
+      if (openIds.has(r.id) || want === r.id || (!want && !openIds.size && next && next.region === r.id)) det.open = true;
+      const status = cleared ? "✅ Cleared" : ropen ? (doneN ? "In progress" : "Open") : "🔒 Locked";
+      const plBadge = pl[r.id] ? h("span", { class: "m-pl " + pl[r.id], text: { known: "familiar", mixed: "partly known", new: "new to you" }[pl[r.id]] }) : null;
+      const bar = h("i", { style: "width:" + (lv.length ? Math.round((doneN / lv.length) * 100) : 0) + "%" });
+      det.append(h("summary", {}, [
+        h("span", { class: "m-icon", text: r.icon }),
+        h("div", { class: "m-name" }, [h("small", { text: "Chapter " + r.n }), r.name, plBadge]),
+        h("div", { class: "m-status" }, [status, h("div", { style: "font-weight:500;color:var(--ink-3)", text: doneN + " / " + lv.length }), h("div", { class: "m-bar" }, [bar])]),
+        h("div", { class: "m-book", text: r.book }),
+      ]));
+      const body = h("div", { class: "m-body" }, [
+        h("p", { class: "m-blurb", text: r.blurb }),
+        h("p", { class: "m-ed1", text: "1st edition: " + r.ed1 + (r.after && r.after.length ? " · Opens after: " + r.after.map((a) => "Ch " + parseInt(a.slice(2), 10)).join(", ") : "") }),
+      ]);
+      const ul = h("ul", { class: "m-levels" });
+      lv.forEach((l) => ul.append(levelRow(l, s, ropen)));
+      body.append(ul);
+      det.append(body);
+      trail.append(det);
+    });
+    if (want) { const t = document.getElementById(want); if (t) setTimeout(() => t.scrollIntoView({ block: "start" }), 50); }
+  }
+
+  function renderShelf() {
+    const el = document.getElementById("shelf");
+    el.innerHTML = "";
+    SHELF.forEach((x) => el.append(h("a", { href: x.href }, ["📄", h("span", {}, [x.title, " ", h("small", { text: x.region })])])));
+  }
+
+  function renderAll() {
+    const s = Quest.state();
+    document.getElementById("free").checked = !!s.freeRoam;
+    renderPlayer(s); renderActions(s); renderTrail(s); renderShelf();
+  }
+
+  document.getElementById("free").addEventListener("change", (e) => { Quest.setFreeRoam(e.target.checked); renderAll(); });
+  document.getElementById("export").addEventListener("click", () => {
+    const blob = new Blob([Quest.exportState()], { type: "application/json" });
+    const a = h("a", { href: URL.createObjectURL(blob), download: "ddia-quest-progress-" + Quest.today() + ".json" });
+    document.body.append(a); a.click(); a.remove();
+  });
+  document.getElementById("import").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { Quest.importState(await f.text()); Quest.toast("Progress imported", "xp"); renderAll(); }
+    catch (err) { Quest.toast("That file isn't a DDIA Quest export.", ""); }
+    e.target.value = "";
+  });
+  document.getElementById("reset").addEventListener("click", () => {
+    if (confirm("Erase all XP, stars, streaks and review cards in this browser? This can't be undone. Export first if unsure.")) { Quest.reset(); renderAll(); }
+  });
+  window.addEventListener("hashchange", renderAll);
+  window.addEventListener("pageshow", (e) => { if (e.persisted) renderAll(); });
+
+  Quest.loadContent().then(renderAll);
+})();
+</script>
+</body>
+</html>
