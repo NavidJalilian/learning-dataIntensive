@@ -97,7 +97,7 @@
 
     <h2>Settings</h2>
     <label class="m-switch"><input type="checkbox" id="free"> Free roam: open every region and boss</label>
-    <p class="q-sidenote">Useful if the Placement Run shows you already know a chapter, or if you're reading the book out of order.</p>
+    <p class="q-sidenote">Useful if you already know a chapter, or if you're reading the book out of order.</p>
     <div class="q-row">
       <button class="q-btn small" id="export">⬇️ Export progress</button>
       <label class="q-btn small" style="cursor:pointer">⬆️ Import progress<input type="file" id="import" accept="application/json,.json" hidden></label>
@@ -120,6 +120,7 @@
   const TYPE_NAME = { level: "Level", boss: "Boss", quest: "Side quest", placement: "Placement" };
   // Reference sheets that exist so far. Add one line per sheet as they're written.
   const SHELF = [
+    { href: "reference/ch01-operational-vs-analytical.html", title: "Operational vs analytical", region: "🧭 Ch 1" },
     { href: "reference/ch02-percentiles.html", title: "Percentiles & tail latency", region: "🗼 Ch 2" },
   ];
 
@@ -162,7 +163,10 @@
     el.innerHTML = "";
     const next = Quest.nextLevel(s, { builtOnly: true });
     const due = Quest.dueCards().length;
-    if (next) el.append(h("a", { class: "q-btn primary", href: Quest.href(next) }, ["▶ " + (s.done["0.1"] ? "Continue: " : "Start: ") + next.id + " " + next.title]));
+    // While the open regions have no built lessons yet, offer the first built one anywhere as a preview.
+    const preview = !next && Quest.content.regions.flatMap((r) => Quest.levelsOf(r.id)).find((l) => l.file && !s.done[l.id] && l.type !== "quest");
+    if (next) el.append(h("a", { class: "q-btn primary", href: Quest.href(next) }, ["▶ " + (Object.keys(s.done).length ? "Continue: " : "Start: ") + next.id + " " + next.title]));
+    else if (preview) el.append(h("a", { class: "q-btn primary", href: Quest.href(preview) }, ["▶ Preview: " + preview.id + " " + preview.title]));
     else el.append(h("span", { class: "q-btn", style: "cursor:default" }, ["✅ You've played every level built so far. Ask Claude for the next one."]));
     el.append(h("a", { class: "q-btn", href: "review.html" }, ["🃏 Daily Review", due ? h("span", { class: "m-badge", text: due + " due" }) : h("small", { style: "color:var(--ink-3)", text: "nothing due" })]));
   }

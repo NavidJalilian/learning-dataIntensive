@@ -21,8 +21,7 @@ Lessons teach every section in original explanations, simulations and quizzes, a
 
 | # | Region | Book chapter (2e) | 1st ed. | Levels |
 |---|---|---|---|---|
-| 0 | ⛺ Base Camp | Before you start | — | 0.1 Placement Run |
-| 1 | 🧭 The Crossroads | Trade-offs in Data Systems Architecture | new | Operational vs analytical · Warehouses, lakes & ETL · Systems of record vs derived · Cloud vs self-hosting · Distributed vs single-node · Data, law & society |
+| 1 | 🧭 The Crossroads | Trade-offs in Data Systems Architecture | new | **Operational vs analytical (built)** · Warehouses, lakes & ETL · Systems of record vs derived · Cloud vs self-hosting · Distributed vs single-node · Data, law & society |
 | 2 | 🗼 Latency Lighthouse | Defining Nonfunctional Requirements | Ch 1 | Home timelines case study · Latency/response time/throughput · **Percentiles & tail latency (built)** · Reliability · Scalability · Maintainability |
 | 3 | 🏛️ Model Market | Data Models and Query Languages | Ch 2 | Relational vs document · Normalization & many-to-many · Star schemas · Graph models · Declarative queries & DataFrames · Event sourcing & CQRS |
 | 4 | ⛏️ Storage Caves | Storage and Retrieval | Ch 3 | Logs & hash indexes · SSTables & LSM · B-trees · LSM vs B-tree · Secondary/covering indexes · Column storage · Full-text & vector search |
@@ -63,6 +62,8 @@ reference/chNN-*.html    printable cheat sheet per lesson/chapter (add each to S
 1. ✅ Workspace: mission, resources, notes.
 2. ✅ Design system + game engine.
 3. ✅ Curriculum for the whole book (plan data for every region and level).
-4. ✅ Foundation: `index.html` (map), `review.html`, Placement Run `lessons/0001-placement-run.html`, model lesson `lessons/0203-percentiles.html` + `reference/ch02-percentiles.html`. Headless-Chromium smoke test plays through all of them (desktop, mobile 390px, dark mode).
-5. ⏳ Waiting on the learner: play the Placement Run and paste the results into chat → write learning records, set pace in MISSION.md, pick the next lesson.
-6. ⏸️ Later (paused at your request): a fleet of agents to plan each chapter in detail, build every lesson, then verify them in Chromium.
+4. ✅ Foundation: `index.html` (map), `review.html`, model lesson `lessons/0203-percentiles.html` + `reference/ch02-percentiles.html`. Headless-Chromium smoke test plays through all of them (desktop, mobile 390px, dark mode).
+5. ✅ Placement Run removed (2026-10-06): the learner is new to the book and starts at Ch 1. Chapter 1 is open from the start; the map's Start button falls back to the first built lesson if no open lesson is built yet.
+6. ✅ Lesson 1.1 `lessons/0101-operational-vs-analytical.html` + `reference/ch01-operational-vs-analytical.html`. Played end-to-end in Chromium (desktop + 375px).
+7. ⏳ Next: lesson 1.2 Warehouses, Lakes & ETL. Ask the learner for pace / weekly time budget for MISSION.md.
+8. ⏸️ Later (paused at your request): a fleet of agents to plan each chapter in detail, build every lesson, then verify them in Chromium.

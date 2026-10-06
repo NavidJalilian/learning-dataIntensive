@@ -3,9 +3,7 @@
  * `ed1` maps the region to the 1st edition (2017) for readers with the older book.
  * Levels for each region live in assets/levels/<id>.js. */
 Quest.defineRegions([
-  { id: "ch00", n: 0, icon: "⛺", name: "Base Camp", book: "Before you start", after: [], ed1: "—",
-    blurb: "Learn how the game works and take a placement run so the next lesson is pitched at the right level." },
-  { id: "ch01", n: 1, icon: "🧭", name: "The Crossroads", book: "Trade-offs in Data Systems Architecture", after: ["ch00"], ed1: "new in 2e (parts of Ch 1 & 3)",
+  { id: "ch01", n: 1, icon: "🧭", name: "The Crossroads", book: "Trade-offs in Data Systems Architecture", after: [], ed1: "new in 2e (parts of Ch 1 & 3)",
     blurb: "Operational vs analytical systems, systems of record vs derived data, cloud vs self-hosting, distributed vs single-node." },
   { id: "ch02", n: 2, icon: "🗼", name: "Latency Lighthouse", book: "Defining Nonfunctional Requirements", after: ["ch01"], ed1: "Ch 1 Reliable, Scalable, Maintainable",
     blurb: "Describe load and performance with percentiles, then reason about reliability, scalability and maintainability." },

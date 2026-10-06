@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operational vs Analytical Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/game.css">
+<style>
+  body { --region: var(--r1); }
+  .ref-top { display: flex; gap: 12px; align-items: center; padding: 14px 0 0; font-size: 14px; }
+  .ref-top a { text-decoration: none; color: var(--ink-2); font-weight: 600; }
+  .ref-top .sp { flex: 1; }
+  .ref h1 { margin-bottom: 4px; }
+  .ref .sub { color: var(--ink-2); margin: 0 0 18px; font-family: var(--font-prose); font-size: 17px; }
+  .ref h2 { font-size: 18px; margin: 26px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--region); }
+  .ref ul, .ref ol { padding-left: 20px; margin: 6px 0; } .ref li { margin: 3px 0; }
+  .ref .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  .ref .say { background: var(--xp-soft); border-radius: 9px; padding: 10px 14px; font-size: 15px; }
+  .ref .test { font: 600 16px var(--font-display); background: var(--bg-2); padding: 10px 14px; border-radius: 9px; }
+  .ref .src { font-size: 12.5px; color: var(--ink-3); }
+  .ref td:first-child { font-weight: 600; }
+  @media (max-width: 640px) { .ref .cols { grid-template-columns: 1fr; } }
+  @media print { .ref-top { display: none; } .ref h2 { break-after: avoid; } body { font-size: 12.5px; } .q-wrap { max-width: none; padding: 0; } }
+</style>
+</head>
+<body>
+<main class="q-wrap ref">
+  <div class="ref-top"><a href="../index.html">← Map</a><a href="../lessons/0101-operational-vs-analytical.html">Lesson 1.1</a><span class="sp"></span><button class="q-btn ghost small" onclick="print()">🖨 Print</button></div>
+
+  <div class="q-kicker" style="margin-top:22px">🧭 DDIA Ch 1 · Reference</div>
+  <h1>Operational vs Analytical</h1>
+  <p class="sub">Operational systems run the product. Analytical systems study what the product did. Tell them apart by how they touch data.</p>
+
+  <p class="test">The one-question test: does it touch <u>a few records found by key</u> (operational), or <u>scan many records to summarise them</u> (analytical)?</p>
+
+  <h2>The differences (DDIA Table 1-1)</h2>
+  <table class="q-table">
+    <tr><th></th><th>Operational (OLTP)</th><th>Analytical (OLAP)</th></tr>
+    <tr><td>Main reads</td><td>Point queries: one record by key</td><td>Aggregate over huge numbers of records</td></tr>
+    <tr><td>Main writes</td><td>Create, update, delete single records</td><td>Bulk import (ETL) or event stream</td></tr>
+    <tr><td>Human user</td><td>End user of the app</td><td>Internal analyst, for decisions</td></tr>
+    <tr><td>Machine user</td><td>Is this action allowed?</td><td>Fraud and abuse detection</td></tr>
+    <tr><td>Queries</td><td>Fixed set, written into the app</td><td>Ad hoc: whatever the analyst asks</td></tr>
+    <tr><td>Data shows</td><td>Latest state, now</td><td>History of events over time</td></tr>
+    <tr><td>Size</td><td>GB to TB</td><td>TB to PB</td></tr>
+  </table>
+
+  <div class="cols">
+    <div>
+      <h2>Who uses what</h2>
+      <ul>
+        <li><b>Backend engineers</b> build operational services that read and write data for users.</li>
+        <li><b>Business analysts</b> write reports for management (business intelligence).</li>
+        <li><b>Data scientists</b> find patterns and build features like recommendations.</li>
+        <li><b>Data engineers</b> connect the operational and analytical sides.</li>
+      </ul>
+      <h2>Blurry cases</h2>
+      <ul>
+        <li><b>HTAP</b> databases try to do both. Often two engines behind one interface. They don't replace a warehouse.</li>
+        <li><b>Product / real-time analytics</b>: analytical queries shown to end users (e.g. a creator's views chart). Systems: Pinot, Druid, ClickHouse.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Why analytics gets its own store</h2>
+      <ol>
+        <li><b>Silos.</b> A report needs data from many operational systems.</li>
+        <li><b>Wrong shape.</b> Operational schemas suit point lookups, not scans.</li>
+        <li><b>Cost.</b> A big scan slows the app for every user.</li>
+        <li><b>Access.</b> Security and compliance may forbid direct queries.</li>
+      </ol>
+      <p>The answer since the late 1980s: a separate <b>data warehouse</b>, filled by ETL. (Details in level 1.2.)</p>
+    </div>
+  </div>
+
+  <h2>Say it in an interview</h2>
+  <p class="say">"User-facing reads and writes go to the operational database: point lookups by key, low latency. The dashboards are an analytical workload, so I'd copy the data into a warehouse and run them there. That way a big report can never slow down checkout."</p>
+
+  <p class="src">Source: Kleppmann &amp; Riccomini, <em>DDIA</em> 2nd ed., Ch 1, "Operational Versus Analytical Systems" and "Data Warehousing" (1st ed. Ch 3, "Transaction Processing or Analytics?").</p>
+</main>
+<script src="../assets/game.js" data-root="../"></script>
+</body>
+</html>

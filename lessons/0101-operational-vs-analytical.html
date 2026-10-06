@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operational vs Analytical</title>
+<link rel="stylesheet" href="../assets/game.css">
+<style>
+  .rows { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; margin: 12px 0 6px; }
+  .rows i { aspect-ratio: 1; border-radius: 3px; background: var(--line-2); transition: background .15s, transform .15s; }
+  .rows i.read { background: var(--accent); }
+  .rows i.hit { background: var(--accent); transform: scale(1.35); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .rows i.write { background: var(--good); transform: scale(1.35); box-shadow: 0 0 0 2px var(--good-soft); }
+  .runs { display: grid; gap: 8px; margin: 8px 0; }
+  .runs .q-btn { justify-content: flex-start; text-align: left; }
+  .runs .q-btn.ran { border-color: var(--good); }
+  .runs .q-btn small { color: var(--ink-3); font-weight: 500; margin-left: 6px; }
+  .cmp td:first-child { font-weight: 600; white-space: nowrap; }
+  @media (max-width: 560px) { .cmp td:first-child { white-space: normal; } }
+</style>
+</head>
+<body style="--region: var(--r1)">
+<main class="q-wrap">
+
+  <header class="q-hero">
+    <div class="q-kicker">🧭 The Crossroads · Level 1.1</div>
+    <h1>Operational vs Analytical</h1>
+    <p class="q-lede">Most data systems sit on one side of a line. Either they <em>run</em> the product, or they <em>study</em> what the product did. Today you learn to tell which side a workload is on just from how it reads and writes data. Almost every later chapter of the book builds on this split.</p>
+    <div class="q-meta"><span class="q-chip">⏱ 10–12 minutes</span><span class="q-chip xp">⚡ 100 XP</span><span class="q-chip">📖 DDIA Ch 1</span><a class="q-chip" href="../reference/ch01-operational-vs-analytical.html">📄 Cheat sheet</a></div>
+  </header>
+
+  <!-- 1 · Recall Run -->
+  <section class="q-step">
+    <div class="q-step-head"><span class="q-step-num">1</span><h2>Recall Run</h2></div>
+    <div id="recall-run"></div>
+  </section>
+
+  <!-- 2 · Two kinds of question + rows lab -->
+  <section class="q-step">
+    <div class="q-step-head"><span class="q-step-num">2</span><h2>One shop, two kinds of question</h2></div>
+    <div class="q-prose">
+      <p>Picture an online bookshop. <strong>Backend engineers</strong> build the services that read and change data when someone uses the site. You open your order, and the app fetches that one order by its ID. You buy a book, and the app writes one new order.<a class="q-cite" href="#src-1">[1]</a></p>
+      <p>Two other groups also want the data. <strong>Business analysts</strong> write reports that help management decide things, such as "what was revenue per country last quarter?" <strong>Data scientists</strong> look for patterns and build features such as recommendations and spam filters. Both groups do <span class="q-term">analytics</span>: they look at the data, but they usually don't change it.<a class="q-cite" href="#src-1">[1]</a></p>
+      <p>The book calls the first kind <span class="q-term">operational systems</span>, also known as <strong>OLTP</strong> (online transaction processing). It calls the second kind <span class="q-term">analytical systems</span>, also known as <strong>OLAP</strong> (online analytical processing).<a class="q-cite" href="#src-1">[1]</a> Run all three requests below and watch which rows each one touches.</p>
+    </div>
+    <div class="q-sim" id="lab">
+      <div class="q-sidenote" style="margin-top:0">The <b>orders</b> table. Each square is one order. Here there are 240; a real shop might have hundreds of millions.</div>
+      <div class="runs">
+        <button class="q-btn" id="run-view">📱 Customer opens order #1093<small>app request</small></button>
+        <button class="q-btn" id="run-buy">🛒 Customer buys a book<small>app request</small></button>
+        <button class="q-btn" id="run-report">📊 Analyst: revenue per country, 2025<small>report</small></button>
+      </div>
+      <div class="rows" id="rows" aria-hidden="true"></div>
+      <div class="q-metrics" id="lab-metrics"></div>
+      <div class="q-goal" id="lab-goal">🎯 <span><b>Goal:</b> run all three requests. Compare how many rows each one reads and writes.</span></div>
+    </div>
+  </section>
+
+  <!-- 3 · The differences -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">3</span><h2>The seven differences</h2></div>
+    <div class="q-prose"><p>The lab showed the first two rows of this table. The book lists the rest.<a class="q-cite" href="#src-1">[1]</a> You don't need to memorise it. The game in the next step will drill it.</p></div>
+    <table class="q-table cmp">
+      <tr><th></th><th>Operational (OLTP)</th><th>Analytical (OLAP)</th></tr>
+      <tr><td>Main reads</td><td>Point queries: fetch one record by its key</td><td>Aggregate over a huge number of records</td></tr>
+      <tr><td>Main writes</td><td>Create, update or delete single records</td><td>Bulk import (ETL) or an event stream</td></tr>
+      <tr><td>Human user</td><td>End user of the web or mobile app</td><td>Internal analyst making business decisions</td></tr>
+      <tr><td>Machine user</td><td>Checking whether an action is allowed</td><td>Detecting fraud or abuse patterns</td></tr>
+      <tr><td>Queries</td><td>A fixed set, written into the app</td><td>Anything the analyst thinks of</td></tr>
+      <tr><td>Data shows</td><td>The latest state, right now</td><td>History of events over time</td></tr>
+      <tr><td>Data size</td><td>Gigabytes to terabytes</td><td>Terabytes to petabytes</td></tr>
+    </table>
+    <p class="q-sidenote">"Online" in OLAP is fuzzy. The book reads it as: analysts explore interactively, instead of only running pre-written queries.<a class="q-cite" href="#src-1">[1]</a></p>
+    <div id="table-quiz"></div>
+  </section>
+
+  <!-- 4 · Sorting game -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">4</span><h2>Sorting game: which side?</h2></div>
+    <div class="q-prose"><p>Twelve real requests hit the bookshop's data today. For each one, ask: <em>does it touch a few records by key, or scan many records to summarise them?</em> Tap a request, then tap a box.</p></div>
+    <div id="sort"></div>
+  </section>
+
+  <!-- 5 · Why keep them apart -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">5</span><h2>Why keep them apart?</h2></div>
+    <div class="q-prose">
+      <p>At first, companies ran reports on the same database the app used. From the late 1980s, they started moving analytics to a separate database called a <span class="q-term">data warehouse</span>.<a class="q-cite" href="#src-1">[1]</a> The book gives four reasons not to let analysts query the operational databases directly:<a class="q-cite" href="#src-1">[1]</a></p>
+      <ol>
+        <li><strong>Silos.</strong> The data is spread over many operational systems: the website, payments, stock, delivery. A report often needs all of them.</li>
+        <li><strong>Wrong shape.</strong> An operational schema is built for point lookups, not for scanning and summarising.</li>
+        <li><strong>Cost.</strong> One big analytic query can slow the system down for everyone using the app.</li>
+        <li><strong>Access.</strong> Security and compliance rules may forbid analysts from reading operational databases.</li>
+      </ol>
+      <p>Two things blur the line. Some databases, called <strong>HTAP</strong> (hybrid transactional/analytical processing), try to do both jobs. Many of them are really two engines behind one interface, and the book says they don't replace warehouses.<a class="q-cite" href="#src-1">[1]</a> And some analytics runs <em>inside</em> the product, such as a "views per day" chart for a creator. The book calls this <strong>product analytics</strong> or <strong>real-time analytics</strong>.<a class="q-cite" href="#src-1">[1]</a> How data moves from the app into a warehouse is <a href="../index.html#ch01">level 1.2</a>.</p>
+    </div>
+    <div id="why-quiz"></div>
+  </section>
+
+  <!-- 6 · Incident -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">6</span><h2>Incident: the Monday report</h2></div>
+    <p class="q-sidenote" style="margin-top:0">You're on call for the bookshop. Each wrong call costs checkout some health.</p>
+    <div id="incident"></div>
+  </section>
+
+  <!-- 7 · Free recall -->
+  <section class="q-step locked">
+    <div class="q-step-head"><span class="q-step-num">7</span><h2>Say it in your own words</h2></div>
+    <div id="explain"></div>
+  </section>
+
+  <div class="q-callout interview"><span class="q-callout-title">🎤 In the interview</span>
+    <p>When the interviewer adds "and the business wants dashboards" or "we want to detect fraud", say it out loud: <em>that's an analytical workload</em>. Then keep it off the request path. Serve users from the operational database, and copy the data somewhere built for scanning. That one sentence shows you know where the load goes.</p></div>
+  <div class="q-callout work"><span class="q-callout-title">🛠 At work</span>
+    <p>Think of the main database your team owns. Does anyone run reports, exports or BI dashboards against it directly? If so, which of the four reasons above is a risk for you? The <a href="../index.html#ch01">Ch 1 side quest</a> turns this into a diagram of your team's data.</p></div>
+
+  <div class="q-read">
+    <div class="q-read-icon">📖</div>
+    <div><b>Read next: DDIA 2nd ed., Chapter 1, "Operational Versus Analytical Systems"</b>
+      <p>Read up to and including "Characterizing Transaction Processing and Analytics". It's short, and Table 1-1 is the table from step 3.<a class="q-cite" href="#src-1">[1]</a> (In the 1st edition, this is Chapter 3, "Transaction Processing or Analytics?")</p>
+      <p><b>Best primary source:</b> the book section itself. This idea comes straight from it. For a second view after the chapter, try Murat Demirbas's <a href="http://muratbuffalo.blogspot.com/2024/12/index-for-designing-data-intensive.html">DDIA reading-group notes</a>.<a class="q-cite" href="#src-2">[2]</a></p></div>
+  </div>
+
+  <div class="q-ask"><span class="q-ask-icon">💬</span><div><b>Something unclear?</b> Ask me in the chat. For example: "Is a search box OLTP or OLAP?", "What does ETL actually do?", or "Is Postgres an operational or analytical database?" I'm your teacher here, and follow-up questions are how this sticks.</div></div>
+
+  <div id="q-finish"></div>
+
+  <footer class="q-foot">
+    <nav>
+      <a href="../index.html#ch01">← World map</a>
+      <a href="../reference/ch01-operational-vs-analytical.html">📄 Cheat sheet</a>
+      <a href="../index.html#ch01">1.2 Warehouses, Lakes &amp; ETL →</a>
+    </nav>
+    <ol style="font-size:13px;color:var(--ink-3);margin-top:18px;padding-left:18px">
+      <li id="src-1">Kleppmann &amp; Riccomini, <a href="https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/"><em>Designing Data-Intensive Applications</em>, 2nd ed.</a> (O'Reilly, 2026), Ch 1, "Operational Versus Analytical Systems", including Table 1-1 and "Data Warehousing". Similar material in the 1st ed., Ch 3, "Transaction Processing or Analytics?"</li>
+      <li id="src-2">Murat Demirbas, <a href="http://muratbuffalo.blogspot.com/2024/12/index-for-designing-data-intensive.html">index of DDIA reading-group posts</a>, <em>Metadata</em> blog.</li>
+    </ol>
+  </footer>
+</main>
+
+<script src="../assets/game.js" data-root="../"></script>
+<script>
+(function () {
+  const L = Quest.lesson({ id: "1.1", region: "ch01", title: "Operational vs Analytical" });
+
+  /* ---------- 1 · Recall Run ---------- */
+  Quest.recallRun("#recall-run", { count: 3 });
+
+  /* ---------- 2 · Rows lab ---------- */
+  const N = 240, ORDER = 117;
+  const grid = document.getElementById("rows");
+  for (let i = 0; i < N; i++) grid.append(document.createElement("i"));
+  const cells = Array.from(grid.children);
+  const labUnit = L.register(document.getElementById("lab"));
+  const ran = new Set();
+  const buttons = { view: document.getElementById("run-view"), buy: document.getElementById("run-buy"), report: document.getElementById("run-report") };
+  let busy = false;
+
+  function metrics(read, written, note) {
+    const met = document.getElementById("lab-metrics");
+    met.innerHTML = "";
+    met.append(Quest.metric("Rows read", read.toLocaleString("en-US"), read > 10 ? "bad" : "good"));
+    met.append(Quest.metric("Rows written", written.toLocaleString("en-US")));
+    met.append(Quest.metric("At real scale", note));
+  }
+  function clear() { cells.forEach((c) => (c.className = "")); }
+  function done(which) {
+    busy = false;
+    ran.add(which);
+    buttons[which].classList.add("ran");
+    Object.values(buttons).forEach((b) => (b.disabled = false));
+    if (ran.size === 3 && !labUnit.reached) {
+      labUnit.reached = true;
+      const g = document.getElementById("lab-goal");
+      g.classList.add("done");
+      g.innerHTML = "✅ <span><b>Goal reached.</b> The two app requests each touched <b>one</b> row, found by its key, and one of them wrote. The report read <b>every</b> row and wrote nothing. That difference in access pattern is what separates operational from analytical.</span>";
+      Quest.toast("🎯 Lab goal reached", "xp");
+      labUnit.complete();
+    }
+  }
+  function run(which) {
+    if (busy) return;
+    busy = true;
+    Object.values(buttons).forEach((b) => (b.disabled = true));
+    clear();
+    if (which === "view") {
+      cells[ORDER].classList.add("hit");
+      metrics(1, 0, "still 1 row");
+      setTimeout(() => done("view"), 500);
+    } else if (which === "buy") {
+      cells[N - 1].classList.add("write");
+      metrics(0, 1, "still 1 row");
+      setTimeout(() => done("buy"), 500);
+    } else {
+      let i = 0;
+      const step = () => {
+        for (let k = 0; k < 12 && i < N; k++, i++) cells[i].classList.add("read");
+        metrics(i, 0, "~100 million rows");
+        if (i < N) setTimeout(step, 40); else done("report");
+      };
+      step();
+    }
+  }
+  buttons.view.addEventListener("click", () => run("view"));
+  buttons.buy.addEventListener("click", () => run("buy"));
+  buttons.report.addEventListener("click", () => run("report"));
+  metrics(0, 0, "—");
+
+  /* ---------- 3 · Table quiz ---------- */
+  Quest.quiz("#table-quiz", { questions: [
+    { q: "How does new data usually arrive in an <b>analytical</b> store?", options: ["In big batches or streams", "One row per user click", "Only when analysts edit rows", "It never receives new data"], answer: 0,
+      explain: "Analytical systems are fed by bulk imports (ETL) or by an event stream, not by users clicking buttons.<a class='q-cite' href='#src-1'>[1]</a>" },
+    { q: "Why does an analytical store keep <b>history</b>, not just the current state?", options: ["Trends need what happened over time", "Current values take too much space", "History makes single-row lookups much faster", "Regulators forbid storing only current values"], answer: 0,
+      explain: "Questions like \"how did sales change since last year?\" need the past. The operational database only has to know what is true right now." },
+    { q: "Why don't operational apps let users type their own SQL?", options: ["It risks data leaks and slowdowns", "SQL cannot express point queries well", "Users would get answers too quickly", "Operational databases do not support SQL"], answer: 0,
+      explain: "Free-form queries could read data the user shouldn't see, and one expensive query could slow the app for everyone. So apps run a fixed set of queries. Analysts get free-form SQL on a separate system.<a class='q-cite' href='#src-1'>[1]</a>" },
+  ] });
+
+  /* ---------- 4 · Sorting game ---------- */
+  Quest.classify("#sort", {
+    prompt: "Sort each request: does it run the shop, or study the shop?",
+    buckets: [{ id: "oltp", label: "⚙️ Operational (OLTP)" }, { id: "olap", label: "📊 Analytical (OLAP)" }],
+    items: [
+      { text: "Show order #4821 to the customer who placed it", bucket: "oltp", explain: "One order, looked up by its ID, for an end user.", hint: "How many orders does it read, and how does it find them?" },
+      { text: "Add a book to a shopper's cart", bucket: "oltp", explain: "Writes one record, triggered by a user action.", hint: "How many records does it change, and who triggered it?" },
+      { text: "Check whether this user may cancel the order", bucket: "oltp", explain: "Checking whether an action is allowed is the book's example of operational machine use.", hint: "It's a quick yes/no check while the user waits." },
+      { text: "Reduce stock by one when a book is sold", bucket: "oltp", explain: "Updates a single record as part of a purchase.", hint: "How many records does it change?" },
+      { text: "Update a customer's delivery address", bucket: "oltp", explain: "Changes one record: the latest state of this customer.", hint: "Is it about now, or about history?" },
+      { text: "Show the 20 newest reviews of one book", bucket: "oltp", explain: "A fixed query in the app, fetching a few records for one key (the book's ID).", hint: "Is this query written into the app, and does it read many records?" },
+      { text: "Revenue per country, per month, for 2025", bucket: "olap", explain: "Adds up a whole year of orders. A classic report.", hint: "How many orders does it have to read?" },
+      { text: "Find books that are often bought together", bucket: "olap", explain: "A data-science job that scans the purchase history to build recommendations.", hint: "Does it look at one order, or at all of them?" },
+      { text: "Find fraud patterns across all past orders", bucket: "olap", explain: "Detecting fraud or abuse patterns is the book's example of analytical machine use.", hint: "It looks across all past orders. How many records is that?" },
+      { text: "Load yesterday's orders into the warehouse overnight", bucket: "olap", explain: "Bulk import (ETL) is how analytical systems get their data.", hint: "Is this one user's write, or a bulk import?" },
+      { text: "Analyst explores: do discounts bring customers back?", bucket: "olap", explain: "An ad-hoc question nobody wrote into the app, over lots of history.", hint: "Was this query written into the app in advance?" },
+      { text: "Average delivery time per courier over 3 years", bucket: "olap", explain: "Aggregates years of history.", hint: "How much history does it read?" },
+    ],
+    explain: "The deciding question: does the request touch a few records found by key (operational), or scan many records to summarise them (analytical)?",
+  });
+
+  /* ---------- 5 · Why apart ---------- */
+  Quest.quiz("#why-quiz", { questions: [
+    { q: "The CEO wants one report that combines the website, the stock system and the payments provider. Which reason for a separate analytics store is this?", options: ["Data lives in silos", "Queries slow down users", "Access must stay restricted", "Schemas suit point lookups"], answer: 0,
+      explain: "The data a report needs is spread over many operational systems. A warehouse brings it together in one place.<a class='q-cite' href='#src-1'>[1]</a>" },
+    { q: "On a video site, each creator sees a live chart of views per day for their videos. What is that?", options: ["Analytics served inside the product", "A purely operational single-row lookup", "A nightly bulk ETL import", "Always an HTAP database underneath"], answer: 0,
+      explain: "It aggregates many events, so it's analytical, but end users see it inside the product. The book calls this product analytics or real-time analytics, and names systems like Pinot, Druid and ClickHouse for it.<a class='q-cite' href='#src-1'>[1]</a>" },
+  ] });
+
+  /* ---------- 6 · Incident ---------- */
+  Quest.scenario("#incident", {
+    title: "🚨 Checkout is crawling",
+    hpLabel: "🛒 Checkout health",
+    tag: "On call",
+    steps: [
+      { situation: "Monday 09:05. Checkout is timing out. The orders database is at <b>100% CPU</b>. The busiest query is <i>\"total spend per customer, all time\"</i>, sent by the analysts' BI dashboard. It reads the entire orders table.",
+        choices: [
+          { text: "A big analytic scan is starving checkout", correct: true, feedback: "Right. Checkout needs fast single-row reads and writes. A full-table scan on the same machine competes for the same CPU and disk." },
+          { text: "Checkout code has a new performance bug", feedback: "Nothing about checkout changed. The new thing on the database is a scan of every order." },
+          { text: "Too many customers are shopping right now", feedback: "Maybe, but the busiest query isn't a customer's. It's a report reading the whole table." },
+          { text: "The network to the database is down", feedback: "The database is at 100% CPU, so requests are reaching it. Something is keeping it busy." },
+        ] },
+      { situation: "You need checkout back <b>now</b>. What do you do first?",
+        choices: [
+          { text: "Stop the report; run it elsewhere later", correct: true, feedback: "Yes. Stop the query that's causing the damage, and deal with the report once checkout is healthy." },
+          { text: "Restart every checkout server right away", feedback: "The checkout servers are fine. They're waiting on a database that's busy with the report." },
+          { text: "Add new indexes to the live table", feedback: "Building an index on a big table is heavy work for the same overloaded database. And an aggregate over all orders still has to read them all." },
+          { text: "Revoke every analyst's data access forever", feedback: "That stops the incident but breaks the business. Analysts need the data, just not from here." },
+        ] },
+      { situation: "Postmortem. Finance needs this report <b>every day</b>, and soon it must also include payments and refunds data from other systems. Which long-term fix do you propose?",
+        choices: [
+          { text: "Copy the data into a separate analytics store", correct: true, feedback: "That's a data warehouse. Analysts query it freely, it can combine data from several systems, and checkout never feels it." },
+          { text: "Run the report at 3 a.m. on production", feedback: "It still competes with real users (shops run at night too), and it doesn't bring in the payments and refunds data." },
+          { text: "Give analysts their own production database login", feedback: "Same database, same load, plus a new security risk. Access rules are one of the reasons to keep analysts off it." },
+          { text: "Cache the report's result on the checkout servers", feedback: "Something still has to compute it from every order, and checkout servers are the wrong place for reports." },
+        ] },
+      { situation: "A teammate says: <i>\"Let's switch to an HTAP database instead. Then we never need a second copy of the data.\"</i> What do you answer?",
+        choices: [
+          { text: "Worth a look, but it won't replace a warehouse", correct: true, feedback: "That's the book's view. Many HTAP systems are two engines behind one interface. And a company with many services, each with its own database, still wants one place that combines them." },
+          { text: "Great: HTAP removes every reason for a warehouse", feedback: "It doesn't fix silos. Payments and refunds live in other systems, and the report needs them too." },
+          { text: "No: no database can ever do both jobs", feedback: "Too strong. HTAP systems exist and can help. They just don't make the warehouse unnecessary." },
+          { text: "Yes: then analysts can query checkout directly", feedback: "That brings back the access and load problems you just fixed." },
+        ] },
+    ],
+    winTitle: "Checkout saved.", win: "You spotted an analytical query on an operational database, stopped the damage, and moved analytics to where it belongs.",
+    lose: "You got there in the end. Replay this level in a few days and the right calls will come faster.",
+  });
+
+  /* ---------- 7 · Free recall ---------- */
+  Quest.recall("#explain", {
+    prompt: "A new teammate asks: <i>\"How do I tell if a workload is operational or analytical? And why can't analysts just query our production database?\"</i> Answer in 2–3 sentences, without scrolling up.",
+    answer: "Look at how it touches data. Operational (OLTP) requests read or write a few records found by key, for users of the app, and show the latest state. Analytical (OLAP) queries scan and summarise huge numbers of records, often over history, for analysts or data scientists. Analysts shouldn't query production because one big scan can slow the app for every user, the data they need is spread over many systems, the schema isn't built for scanning, and access rules may forbid it. So the data is copied to a separate warehouse.",
+  });
+
+  Quest.loadContent();
+})();
+</script>
+</body>
+</html>

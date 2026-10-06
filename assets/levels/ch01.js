@@ -1,9 +1,16 @@
 /* Ch 1 — Trade-offs in Data Systems Architecture */
 Quest.defineLevels("ch01", [
-  { id: "1.1", title: "Operational vs Analytical", file: null,
+  { id: "1.1", title: "Operational vs Analytical", file: "lessons/0101-operational-vs-analytical.html",
     skill: "Classify a workload as operational (OLTP) or analytical (OLAP) from its access pattern.",
-    game: "Sorting game: 14 real queries from an e-commerce company go into an OLTP or OLAP bin. Then a speed round.",
-    read: "Ch 1 — operational versus analytical systems; transaction processing vs analytics." },
+    game: "Rows-touched lab, a sorting game with 12 real bookshop requests, and an incident where a report takes down checkout.",
+    read: "Ch 1 — operational versus analytical systems; characterizing transaction processing and analytics.",
+    review: [
+      { q: "A request fetches one customer's order by its ID. Which kind of workload is it?", options: ["Operational, a point query by key", "Analytical, an aggregate over many rows", "Analytical, a bulk import from ETL", "Operational, a scan of every row"], answer: 0, explain: "Fetching one record by its key is the typical operational (OLTP) read." },
+      { q: "What is the main read pattern of an analytical (OLAP) system?", options: ["Summarise a huge number of records", "Fetch one record using its key", "Read only the single newest row", "Lock each record before reading it"], answer: 0, explain: "Analytical queries scan and summarise many records (aggregate them), such as all orders in a year." },
+      { q: "How does an analytical store usually receive new data?", options: ["Bulk imports or an event stream", "Users editing single rows by hand", "Analysts typing updates by hand daily", "It never receives any new data"], answer: 0, explain: "Analytical systems are fed by ETL (bulk import) or by event streams, not by users clicking buttons." },
+      { q: "Why not let analysts query the production database directly?", options: ["Big scans slow the app down", "Production databases cannot run SQL queries", "Analysts only need the latest state", "Production data is too small anyway"], answer: 0, explain: "One expensive scan competes with user requests. Data silos, an unsuitable schema, and access rules are the other reasons." },
+      { q: "A creator sees a live chart of views per day for their videos. What is it?", options: ["Analytics shown inside the product", "A single operational primary-key lookup", "A nightly warehouse ETL import", "Always an HTAP database underneath"], answer: 0, explain: "It aggregates many events (analytical), but users see it in the product. DDIA calls this product or real-time analytics." },
+    ] },
   { id: "1.2", title: "Warehouses, Lakes & ETL", file: null,
     skill: "Explain why analytics runs on a separate warehouse or lake, and how data gets there (ETL/ELT).",
     game: "Build-a-pipeline: drag sources, ETL and warehouse onto a canvas, then fix a broken pipeline.",
